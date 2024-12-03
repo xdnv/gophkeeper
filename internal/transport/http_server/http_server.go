@@ -2,7 +2,6 @@ package http_server
 
 import (
 	"net/http"
-	"net/http/pprof"
 
 	"github.com/go-chi/chi/v5"
 
@@ -27,11 +26,6 @@ func ServeHTTP() *http.Server {
 	mux.Post("/value/", HandleRequestMetricV2)
 	mux.Post("/update/", HandleUpdateMetricV2)
 	mux.Post("/updates/", HandleUpdateMetrics)
-
-	mux.Mount("/debug/pprof/", http.HandlerFunc(pprof.Index))
-	mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	// create a server
 	srv := &http.Server{Addr: app.Sc.Endpoint, Handler: mux}
