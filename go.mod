@@ -20,15 +20,18 @@ replace internal/adapters/logger => ./internal/adapters/logger
 
 replace internal/adapters/retrier => ./internal/adapters/retrier
 
-require internal/app v1.0.0 // indirect
+require internal/app v1.0.0
 
 replace internal/app => ./internal/app
 
-require internal/domain v1.0.0 // indirect
+require internal/domain v1.0.0
 
 replace internal/domain => ./internal/domain
 
-require internal/transport/http_server v1.0.0
+require (
+	internal/ports/storage v1.0.0
+	internal/transport/http_server v1.0.0
+)
 
 replace internal/transport/http_server => ./internal/transport/http_server
 
@@ -44,5 +47,4 @@ require (
 	golang.org/x/crypto v0.28.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
-	internal/ports/storage v1.0.0 // indirect
 )
