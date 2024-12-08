@@ -1,5 +1,5 @@
 // common configuration module filling info version info from runtime debug data
-package app
+package domain
 
 import "runtime/debug"
 

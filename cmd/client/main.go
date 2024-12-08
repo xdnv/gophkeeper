@@ -8,27 +8,30 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	// "internal/adapters/cryptor"
 	"internal/adapters/logger"
 	"internal/app"
-	// "internal/app"
+	"internal/domain"
+	"internal/ports/console"
 	// "internal/domain"
 	// "github.com/google/uuid"
 	// "github.com/shirou/gopsutil/cpu"
 	// "github.com/shirou/gopsutil/v3/mem"
 )
 
-// var ac app.AgentConfig
+var cc app.ClientConfig
+
 // var sendJobs chan uuid.UUID
 
 // version descriptor
-var version = app.GetVersion()
+var version = domain.GetVersion()
 
 // store agent IP address to send in header
-var agentIP string
+//var agentIP string
 
-// universal Message data structure for both HTTP and gPRC communication
+// universal Message data structure for client-server communication
 type Message struct {
 	Address     string
 	ContentType string
@@ -36,30 +39,30 @@ type Message struct {
 	Metadata    map[string]string
 }
 
-// // NewMessage constructor for Message
-// func NewMessage() *Message {
-// 	return &Message{
-// 		Body:     new(bytes.Buffer),       // init Body as a new bytes.Buffer
-// 		Metadata: make(map[string]string), // init the map
-// 	}
-// }
+// NewMessage constructor for Message
+func NewMessage() *Message {
+	return &Message{
+		Body:     new(bytes.Buffer),       // init Body as a new bytes.Buffer
+		Metadata: make(map[string]string), // init the map
+	}
+}
 
-// // universal Response data structure for both HTTP and gPRC communication
-// type Response struct {
-// 	StatusCode    int
-// 	Status        string
-// 	ContentLength int64
-// 	Body          *bytes.Buffer
-// 	Metadata      map[string][]string
-// }
+// universal Response data structure for client-server communication
+type Response struct {
+	StatusCode    int
+	Status        string
+	ContentLength int64
+	Body          *bytes.Buffer
+	Metadata      map[string][]string
+}
 
-// // NewResponse constructor for Response
-// func NewResponse() *Response {
-// 	return &Response{
-// 		Body:     new(bytes.Buffer),         // init Body as a new bytes.Buffer
-// 		Metadata: make(map[string][]string), // init the map
-// 	}
-// }
+// NewResponse constructor for Response
+func NewResponse() *Response {
+	return &Response{
+		Body:     new(bytes.Buffer),         // init Body as a new bytes.Buffer
+		Metadata: make(map[string][]string), // init the map
+	}
+}
 
 // // converts the http.Response object to Response
 // func NewHTTPResponse(r *http.Response) (*Response, error) {
@@ -568,7 +571,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	//Warning! do not run outside function, it will break tests due to flag.Parse()
-	//ac = app.InitAgentConfig()
+	cc = app.InitClientConfig()
 
 	wg.Add(1)
 	go client(ctx, &wg)
@@ -597,6 +600,13 @@ func client(ctx context.Context, wg *sync.WaitGroup) {
 	logger.Infof("Build date: %s", naIfEmpty(version.Date))
 	logger.Infof("Build commit: %s", naIfEmpty(version.Commit))
 
+	app := console.NewApp(ctx)
+	app.Init()
+	if err := app.Run(); err != nil {
+		panic(err)
+	}
+	//wg.Done() //while we have no other goroutines
+
 	//commit := fmt.Sprintf("v.%s git:%s (%s)", version.Version, version.Commit, version.Date)
 	//logger.Infof("VERSION: %s", naIfEmpty(commit))
 
@@ -615,15 +625,6 @@ func client(ctx context.Context, wg *sync.WaitGroup) {
 	// }
 	// agentIP = localIP
 
-	// //add optional rate limiter as required by technical specs
-	// if ac.UseRateLimit {
-	// 	sendJobs = make(chan uuid.UUID, ac.RateLimit)
-	// 	for w := 1; w <= int(ac.RateLimit); w++ {
-	// 		wg.Add(1)
-	// 		go payloadSender(ctx, ac, wg, w, sendJobs)
-	// 	}
-	// }
-
 	// wg.Add(1)
 	// go collector(ctx, ac, wg)
 	// wg.Add(1)
@@ -631,17 +632,12 @@ func client(ctx context.Context, wg *sync.WaitGroup) {
 	// wg.Add(1)
 	// go reporter(ctx, ac, wg)
 
-	<-ctx.Done()
+	//<-ctx.Done()
 	logger.Info("client: shutdown requested")
 
-	// // close channel on exit
-	// if ac.UseRateLimit {
-	// 	close(sendJobs)
-	// }
-
-	// // shut down gracefully with timeout of 5 seconds max
-	// _, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	// defer cancel()
+	// shut down gracefully with timeout of 5 seconds max
+	_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	logger.Info("client: stopped")
 }

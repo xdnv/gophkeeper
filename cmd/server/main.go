@@ -34,7 +34,7 @@ var Commit = func() string {
 }()
 
 // version descriptor
-var version = app.GetVersion()
+var version = domain.GetVersion()
 
 func main() {
 	//sync internal/logger upon exit

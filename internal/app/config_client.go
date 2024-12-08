@@ -6,15 +6,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"internal/adapters/cryptor"
 	"internal/domain"
 )
 
-// agent configuration
-type AgentConfig struct {
+// client configuration
+type ClientConfig struct {
 	TransportMode        string `json:"transport_mode,omitempty"`    // data exchange transport mode: http or grpc
 	Endpoint             string `json:"address,omitempty"`           // the address:port server endpoint to send metric data
 	ReportInterval       int64  `json:"report_interval,omitempty"`   // metric reporting frequency in seconds
@@ -32,8 +31,8 @@ type AgentConfig struct {
 }
 
 // NewConfig initializes a Config with default values
-func NewAgentConfig() AgentConfig {
-	return AgentConfig{
+func NewClientConfig() ClientConfig {
+	return ClientConfig{
 		ConfigFilePath:   "",
 		TransportMode:    domain.TRANSPORT_HTTP,
 		Endpoint:         domain.ENDPOINT,
@@ -47,7 +46,7 @@ func NewAgentConfig() AgentConfig {
 }
 
 // custom command line parser to read config file name before flag.Parse() -- iter22 requirement
-func ParseAgentConfigFile(cf *AgentConfig) {
+func ParseAgentConfigFile(cf *ClientConfig) {
 	for i, arg := range os.Args {
 		if arg == "-config" {
 			if i+1 < len(os.Args) {
@@ -63,7 +62,7 @@ func ParseAgentConfigFile(cf *AgentConfig) {
 		return
 	}
 
-	jcf := NewAgentConfig()
+	jcf := NewClientConfig()
 
 	file, err := os.Open(cf.ConfigFilePath)
 	if err != nil {
@@ -86,12 +85,10 @@ func ParseAgentConfigFile(cf *AgentConfig) {
 }
 
 // set agent configuration using command line arguments and/or environment variables
-func InitAgentConfig() AgentConfig {
+func InitClientConfig() ClientConfig {
 
-	cf := NewAgentConfig()
-	cf.APIVersion = "v2"        // activate JSON support
+	cf := NewClientConfig()
 	cf.UseCompression = true    // activate gzip compression
-	cf.BulkUpdate = true        // activate bulk JSON metric update
 	cf.MaxConnectionRetries = 3 // Connection retries for retriable functions (does not include original request. 0 to disable)
 	cf.ConfigFilePath = ""
 
@@ -100,44 +97,38 @@ func InitAgentConfig() AgentConfig {
 
 	//set defaults and read command line
 	flag.StringVar(&cf.ConfigFilePath, "config", cf.ConfigFilePath, "path to configuration file in JSON format") //used to pass Parse() check
-	flag.StringVar(&cf.TransportMode, "transport", cf.TransportMode, "data exchange transport mode: http or grpc")
 	flag.StringVar(&cf.Endpoint, "a", cf.Endpoint, "the address:port server endpoint to send metric data")
-	flag.Int64Var(&cf.PollInterval, "p", cf.PollInterval, "metric poll interval in seconds")
-	flag.Int64Var(&cf.ReportInterval, "r", cf.ReportInterval, "metric reporting frequency in seconds")
-	flag.Int64Var(&cf.RateLimit, "l", cf.RateLimit, "max simultaneous connections to server, set 0 to disable rate limit")
-	flag.StringVar(&cf.MessageSignature, "k", cf.MessageSignature, "key to use signed messaging, empty value disables signing")
+	//flag.Int64Var(&cf.RateLimit, "l", cf.RateLimit, "max simultaneous connections to server, set 0 to disable rate limit")
+	//flag.StringVar(&cf.MessageSignature, "k", cf.MessageSignature, "key to use signed messaging, empty value disables signing")
 	flag.StringVar(&cf.CryptoKeyPath, "crypto-key", cf.CryptoKeyPath, "path to public crypto key")
 	flag.StringVar(&cf.LogLevel, "v", cf.LogLevel, "log verbosity (log level)")
 	flag.Parse()
 
 	//parse env variables
-	if val, found := os.LookupEnv("TRANSPORT_MODE"); found {
-		cf.TransportMode = val
-	}
 	if val, found := os.LookupEnv("ADDRESS"); found {
 		cf.Endpoint = val
 	}
-	if val, found := os.LookupEnv("POLL_INTERVAL"); found {
-		intval, err := strconv.ParseInt(val, 10, 64)
-		if err == nil {
-			cf.PollInterval = intval
-		}
-	}
-	if val, found := os.LookupEnv("REPORT_INTERVAL"); found {
-		intval, err := strconv.ParseInt(val, 10, 64)
-		if err == nil {
-			cf.ReportInterval = intval
-		}
-	}
-	if val, found := os.LookupEnv("RATE_LIMIT"); found {
-		intval, err := strconv.ParseInt(val, 10, 64)
-		if err == nil {
-			cf.RateLimit = intval
-		}
-	}
-	if val, found := os.LookupEnv("KEY"); found {
-		cf.MessageSignature = val
-	}
+	// if val, found := os.LookupEnv("POLL_INTERVAL"); found {
+	// 	intval, err := strconv.ParseInt(val, 10, 64)
+	// 	if err == nil {
+	// 		cf.PollInterval = intval
+	// 	}
+	// }
+	// if val, found := os.LookupEnv("REPORT_INTERVAL"); found {
+	// 	intval, err := strconv.ParseInt(val, 10, 64)
+	// 	if err == nil {
+	// 		cf.ReportInterval = intval
+	// 	}
+	// }
+	// if val, found := os.LookupEnv("RATE_LIMIT"); found {
+	// 	intval, err := strconv.ParseInt(val, 10, 64)
+	// 	if err == nil {
+	// 		cf.RateLimit = intval
+	// 	}
+	// }
+	// if val, found := os.LookupEnv("KEY"); found {
+	// 	cf.MessageSignature = val
+	// }
 	if val, found := os.LookupEnv("CRYPTO_KEY"); found {
 		cf.CryptoKeyPath = val
 	}
@@ -146,18 +137,16 @@ func InitAgentConfig() AgentConfig {
 	}
 
 	// check for critical missing config entries
-	if cf.TransportMode != domain.TRANSPORT_HTTP && cf.TransportMode != domain.TRANSPORT_GRPC {
-		panic("PANIC: application transport mode set incorrectly")
-	}
+
 	if cf.Endpoint == "" {
 		panic("PANIC: endpoint address:port is not set")
 	}
-	if cf.PollInterval == 0 {
-		panic("PANIC: poll interval is not set")
-	}
-	if cf.ReportInterval == 0 {
-		panic("PANIC: report interval is not set")
-	}
+	// if cf.PollInterval == 0 {
+	// 	panic("PANIC: poll interval is not set")
+	// }
+	// if cf.ReportInterval == 0 {
+	// 	panic("PANIC: report interval is not set")
+	// }
 	if cf.LogLevel == "" {
 		panic("PANIC: log level is not set")
 	}
