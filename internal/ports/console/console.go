@@ -103,7 +103,7 @@ func (app *ConsoleApp) Init() {
 
 func (app *ConsoleApp) ActivateLoginPage(clear bool) {
 	if app.loginForm == nil {
-		app.loginForm = createLoginForm(app)
+		app.loginForm = newLoginForm(app)
 	}
 	if clear {
 		form := app.loginForm.GetItem(1).(*tview.Form)
@@ -115,7 +115,7 @@ func (app *ConsoleApp) ActivateLoginPage(clear bool) {
 
 func (app *ConsoleApp) ActivateMainPage() {
 	if app.mainForm == nil {
-		app.mainForm = createMainLayout(app)
+		app.mainForm = newMainLayout(app)
 	}
 	app.ResetFocus()
 	enableCapture(app)
@@ -124,25 +124,25 @@ func (app *ConsoleApp) ActivateMainPage() {
 }
 
 func (app *ConsoleApp) ActivateNewCreditCardPage() {
-	form := createCreditCardForm(app)
+	form := newCreditCardForm(app)
 	disableCapture(app)
 	app.SetRoot(form, true).SetFocus(form).Run()
 }
 
 func (app *ConsoleApp) ActivateNewCredentialsPage() {
-	form := createCredentialsForm(app)
+	form := newCredentialsForm(app)
 	disableCapture(app)
 	app.SetRoot(form, true).SetFocus(form).Run()
 }
 
 func (app *ConsoleApp) ActivateNewTextDataPage() {
-	form := createTextDataForm(app)
+	form := newTextDataForm(app)
 	disableCapture(app)
 	app.SetRoot(form, true).SetFocus(form).Run()
 }
 
 func (app *ConsoleApp) ActivateNewBinaryDataPage() {
-	form := createBinaryDataForm(app)
+	form := newBinaryDataForm(app)
 	disableCapture(app)
 	app.SetRoot(form, true).SetFocus(form).Run()
 }

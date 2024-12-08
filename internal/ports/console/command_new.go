@@ -23,6 +23,13 @@ func (ec *CommandNew) Execute(ctx context.Context, args []string) (string, error
 
 	result := ""
 
+	//TODO: add suspend
+	// app.Suspend(func() {
+	// 	if err := app.Run(); err != nil {
+	// 		panic(err)
+	// 	}
+	// })
+
 	switch datatype {
 	case TYPE_CREDENTIALS:
 		app.ActivateNewCredentialsPage()

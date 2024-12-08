@@ -41,6 +41,8 @@ replace internal/ports/storage => ./internal/ports/storage
 replace internal/ports/console => ./internal/ports/console
 
 require (
+	github.com/aerogu/tvchooser v1.1.0 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/gdamore/tcell/v2 v2.7.1 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438 // indirect

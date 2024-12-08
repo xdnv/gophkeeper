@@ -6,7 +6,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func createLoginForm(app *ConsoleApp) *tview.Flex {
+func newLoginForm(app *ConsoleApp) *tview.Flex {
 	loginForm := tview.NewForm()
 
 	header := fmt.Sprintf("the GophKeeper v.%s (%s, %s)\n\nHello user! Please name youself.", app.version.Version, app.version.Date, app.version.Commit)
@@ -43,7 +43,7 @@ func createLoginForm(app *ConsoleApp) *tview.Flex {
 			}
 		}).
 		AddButton("Register", func() {
-			app.SetRoot(createRegistrationForm(app), true) // Go to registration form
+			app.SetRoot(newRegistrationForm(app), true) // Go to registration form
 		}).
 		AddButton("Exit", func() {
 			app.Stop()

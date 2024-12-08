@@ -8,7 +8,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func createMainLayout(app *ConsoleApp) *tview.Flex {
+func newMainLayout(app *ConsoleApp) *tview.Flex {
 	app.list = tview.NewList()
 
 	for _, item := range items {

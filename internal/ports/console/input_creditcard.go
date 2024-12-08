@@ -7,7 +7,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func createCreditCardForm(app *ConsoleApp) *tview.Form {
+func newCreditCardForm(app *ConsoleApp) *tview.Form {
 	form := tview.NewForm()
 
 	// entry fields

@@ -6,7 +6,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func createCredentialsForm(app *ConsoleApp) *tview.Form {
+func newCredentialsForm(app *ConsoleApp) *tview.Form {
 	form := tview.NewForm()
 
 	// entry fields

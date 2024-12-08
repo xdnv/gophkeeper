@@ -6,7 +6,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func createTextDataForm(app *ConsoleApp) *tview.Form {
+func newTextDataForm(app *ConsoleApp) *tview.Form {
 	form := tview.NewForm()
 
 	// entry fields

@@ -4,7 +4,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func createRegistrationForm(app *ConsoleApp) *tview.Form {
+func newRegistrationForm(app *ConsoleApp) *tview.Form {
 	form := tview.NewForm()
 	form.
 		AddInputField("Username", "", 20, nil, nil).

@@ -20,8 +20,8 @@ func GetVersion() *Version {
 			//vcs.revision: the revision identifier for the current commit or checkout
 			if setting.Key == "vcs.revision" {
 				av.Commit = setting.Value
-				if len(av.Commit) > 7 {
-					av.Commit = av.Commit[:7]
+				if len(av.Commit) > 8 {
+					av.Commit = av.Commit[:8]
 				}
 			}
 			//vcs.time: the modification time associated with vcs.revision, in RFC3339 format
