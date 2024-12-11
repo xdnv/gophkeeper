@@ -7,9 +7,12 @@ require (
 	internal/adapters/cryptor v1.0.0
 	internal/adapters/logger v1.0.0
 	internal/app v1.0.0
+	internal/domain v1.0.0
 )
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -21,7 +24,6 @@ require (
 	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
-	internal/domain v1.0.0 // indirect
 	internal/ports/storage v1.0.0 // indirect
 )
 

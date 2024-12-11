@@ -5,6 +5,8 @@ go 1.22.7
 require github.com/jackc/pgx/v5 v5.7.1
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
@@ -18,6 +20,10 @@ require (
 require internal/adapters/logger v1.0.0
 
 replace internal/adapters/logger => ../../adapters/logger
+
+replace internal/adapters/cryptor => ../../adapters/cryptor
+
+replace internal/app => ../../app
 
 require (
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438

@@ -3,16 +3,18 @@ package console
 import (
 	"context"
 	"fmt"
+	"internal/domain"
 )
 
+// Command prototype
 type CommandExit struct{}
 
 func (ec *CommandExit) Execute(ctx context.Context, args []string) (string, error) {
-	app, ok := ctx.Value(appCtx).(*ConsoleApp)
+	ca, ok := ctx.Value(domain.CtxApp).(*ConsoleApp)
 	if !ok {
 		return "", fmt.Errorf("failed to get main application object")
 	}
-	app.Stop()
+	ca.Stop()
 	return "", nil
 }
 

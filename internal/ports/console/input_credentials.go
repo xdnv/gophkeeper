@@ -1,15 +1,20 @@
 package console
 
 import (
+	"encoding/json"
 	"fmt"
+	"internal/domain"
+	"internal/transport/http_client"
 
 	"github.com/rivo/tview"
 )
 
-func newCredentialsForm(app *ConsoleApp) *tview.Form {
+func newCredentialsForm(ca *ConsoleApp) *tview.Form {
 	form := tview.NewForm()
 
 	// entry fields
+	form.AddInputField("Name", "", 30, nil, nil)
+
 	form.AddInputField("Address", "", 50, nil, nil).
 		AddInputField("Login", "", 50, nil, nil).
 		AddInputField("Password", "", 50, nil, nil)
@@ -18,27 +23,62 @@ func newCredentialsForm(app *ConsoleApp) *tview.Form {
 
 	form.AddButton("Submit",
 		func() {
+			name := form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
 			address := form.GetFormItemByLabel("Address").(*tview.InputField).GetText()
 			login := form.GetFormItemByLabel("Login").(*tview.InputField).GetText()
 			password := form.GetFormItemByLabel("Password").(*tview.InputField).GetText()
 			description := form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
 
-			message := fmt.Sprintf("Address: %s\nLogin: %s\nPassword: %s\nDescription: %s\n", address, login, password, description)
+			r := new(domain.KeeperRecord)
+			r.Name = name
+			r.Description = description
+			r.SecretType = "credentials"
+			r.IsDeleted = false
+
+			errMsg := "New Credentials error: %s"
+
+			k := new(domain.KeeperCredentials)
+			k.Address = address
+			k.Login = login
+			k.Password = password
+
+			jsonDataCr, err := json.Marshal(k)
+			if err != nil {
+				ca.AppendConsole(fmt.Sprintf(errMsg, err))
+				return
+			}
+			r.Secret = string(jsonDataCr)
+
+			jsonData, err := json.Marshal(r)
+			if err != nil {
+				ca.AppendConsole(fmt.Sprintf(errMsg, err))
+				return
+			}
+
+			args := []string{r.SecretType}
+			resp, err := http_client.ExecuteCommand("new", args, &jsonData)
+			if err != nil {
+				ca.AppendConsole(fmt.Sprintf(errMsg, err))
+				return
+			}
+
+			message := resp.Status
+			//message := fmt.Sprintf("Name: %s\nAddress: %s\nLogin: %s\nPassword: %s\nDescription: %s\n", name, address, login, password, description)
 			modal := tview.NewModal().
 				SetText(message).
 				AddButtons([]string{"OK"}).
 				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-					app.AppendConsole(message)
-					app.ActivateMainPage()
+					ca.AppendConsole(message)
+					ca.ActivateMainPage()
 				})
-			if err := app.SetRoot(modal, false).SetFocus(modal).Run(); err != nil {
+			if err := ca.SetRoot(modal, false).SetFocus(modal).Run(); err != nil {
 				panic(err)
 			}
 		})
 
 	form.AddButton("Return", func() {
-		app.AppendConsole("Cancelled")
-		app.ActivateMainPage()
+		ca.AppendConsole("Cancelled")
+		ca.ActivateMainPage()
 	})
 
 	form.SetBorder(true).SetTitle("New credentials")

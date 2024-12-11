@@ -3,6 +3,7 @@ package console
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"internal/domain"
 
@@ -10,44 +11,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-const (
-	correctUsername = "user"
-	correctPassword = "password"
-)
-
-var registeredUsers = map[string]string{
-	correctUsername: correctPassword,
-}
-
-type ListItem struct {
-	ID      string
-	Text    string
-	Comment string
-}
-
-var items = []ListItem{
-	{"1", "Item 1", "Description 1"},
-	{"2", "Item 2", "Description 2 very long description to read only on big big screen"},
-	{"3", "Item 3", "Description 3"},
-	{"4", "Item 4", "Description 4"},
-	{"5", "Item 5", "Description 5 www.blablablablabla.com/somenewpage/wow?abcde=12345"},
-	{"6", "Item 6", "Description 6"},
-	{"7", "Item 7", "Description 7"},
-	{"8", "Item 8", "Description 8"},
-	{"9", "Item 9", "Description 9"},
-	{"10", "Item 10", "Description 10"},
-	{"11", "Item 11", "Description 11"},
-	{"12", "Item 12", "Description 12"},
-	{"13", "Item 13", "Description 13"},
-	{"14", "Item 14", "Description 14"},
-	{"15", "Item 15", "Description 15"},
-	{"16", "MCRD 1234", "MC 1234: This card is so important to me so its description cannot fit to even biggest screen in the room. Or, maybe, in the world too. Wow! Exceptionally long description."},
-	{"17", "VISA 5678", "Card #2"},
-	{"18", "VISA 9012", "Card #3"},
-	{"19", "MIR 3456", "Card #4"},
-	{"20", "MIR 7890", "Card #5"},
-	{"21", "VISA 1234", "Card #6"},
-}
+var items []domain.KeeperRecord
 
 var cp *CommandParser
 
@@ -65,12 +29,6 @@ type ConsoleApp struct {
 	mainForm  *tview.Flex
 }
 
-type key string
-
-const (
-	appCtx key = "app"
-)
-
 func CenterVertically(text *tview.TextView) *tview.TextView {
 	text.SetDrawFunc(func(screen tcell.Screen, x, y, w, h int) (int, int, int, int) {
 		y += h / 2
@@ -87,106 +45,158 @@ func NewApp(ctx context.Context) *ConsoleApp {
 	}
 }
 
-func (app *ConsoleApp) InitCommands() {
-	cp = NewCommandParser(app)
+func (ca *ConsoleApp) InitCommands() {
+	cp = NewCommandParser(ca)
+	cp.RegisterCommand("sync", &CommandSync{})
 	cp.RegisterCommand("list", &CommandList{})
 	cp.RegisterCommand("new", &CommandNew{})
+	cp.RegisterCommand("dump", &CommandDump{})
+	cp.RegisterCommand("ping", &CommandPing{})
 	cp.RegisterCommand("exit", &CommandExit{})
 }
 
-func (app *ConsoleApp) Init() {
-	app.InitCommands()
-	app.ActivateLoginPage(false)
+func (ca *ConsoleApp) Init() {
+	ca.InitCommands()
+	ca.ActivateLoginPage(false)
 	// app.loginForm = createLoginForm(app)
 	// app.SetRoot(app.loginForm, true) // Set Login Form as main form
 }
 
-func (app *ConsoleApp) ActivateLoginPage(clear bool) {
-	if app.loginForm == nil {
-		app.loginForm = newLoginForm(app)
+// Update list from server
+func SyncRecordList(ca *ConsoleApp) {
+	ca.HandleCommand("sync")
+	ca.UpdateRecordList()
+}
+
+// Search list record using ListNR, ShortID and ID
+func SearchByID(id string) (*domain.KeeperRecord, error) {
+
+	//ListNR
+	if strings.HasPrefix(id, "#") {
+		rowNum := strings.TrimPrefix(id, "#")
+		for _, record := range items {
+			if record.ListNR == rowNum {
+				return &record, nil
+			}
+		}
+	}
+
+	//ShortID
+	if len(id) == 8 {
+		for _, record := range items {
+			if record.ShortID == id {
+				return &record, nil
+			}
+		}
+	}
+
+	//ID
+	if len(id) == 36 {
+		for _, record := range items {
+			if record.ID == id {
+				return &record, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no record found with identifier %s", id)
+}
+
+func (ca *ConsoleApp) ActivateLoginPage(clear bool) {
+	if ca.loginForm == nil {
+		ca.loginForm = newLoginForm(ca)
 	}
 	if clear {
-		form := app.loginForm.GetItem(1).(*tview.Form)
+		form := ca.loginForm.GetItem(1).(*tview.Form)
 		form.GetFormItemByLabel("Username").(*tview.InputField).SetText("")
 		form.GetFormItemByLabel("Password").(*tview.InputField).SetText("")
 	}
-	app.SetRoot(app.loginForm, true).SetFocus(app.loginForm).Run()
+	ca.SetRoot(ca.loginForm, true).SetFocus(ca.loginForm).Run()
 }
 
-func (app *ConsoleApp) ActivateMainPage() {
-	if app.mainForm == nil {
-		app.mainForm = newMainLayout(app)
+func (ca *ConsoleApp) ActivateMainPage() {
+	if ca.mainForm == nil {
+		ca.mainForm = newMainLayout(ca)
 	}
-	app.ResetFocus()
-	enableCapture(app)
+	ca.ResetFocus()
+	enableCapture(ca)
 	//app.SetRoot(app.mainForm, true).SetFocus(app.mainForm).Run()
-	app.SetRoot(app.mainForm, true).SetFocus(app.list).Run()
+	ca.SetRoot(ca.mainForm, true).SetFocus(ca.list)
+	SyncRecordList(ca)
+	ca.Run()
 }
 
-func (app *ConsoleApp) ActivateNewCreditCardPage() {
-	form := newCreditCardForm(app)
-	disableCapture(app)
-	app.SetRoot(form, true).SetFocus(form).Run()
+func (ca *ConsoleApp) ActivateNewCreditCardPage() {
+	form := newCreditCardForm(ca)
+	disableCapture(ca)
+	ca.SetRoot(form, true).SetFocus(form).Run()
 }
 
-func (app *ConsoleApp) ActivateNewCredentialsPage() {
-	form := newCredentialsForm(app)
-	disableCapture(app)
-	app.SetRoot(form, true).SetFocus(form).Run()
+func (ca *ConsoleApp) ActivateNewCredentialsPage() {
+	form := newCredentialsForm(ca)
+	disableCapture(ca)
+	ca.SetRoot(form, true).SetFocus(form).Run()
 }
 
-func (app *ConsoleApp) ActivateNewTextDataPage() {
-	form := newTextDataForm(app)
-	disableCapture(app)
-	app.SetRoot(form, true).SetFocus(form).Run()
+func (ca *ConsoleApp) ActivateNewTextDataPage() {
+	form := newTextDataForm(ca)
+	disableCapture(ca)
+	ca.SetRoot(form, true).SetFocus(form).Run()
 }
 
-func (app *ConsoleApp) ActivateNewBinaryDataPage() {
-	form := newBinaryDataForm(app)
-	disableCapture(app)
-	app.SetRoot(form, true).SetFocus(form).Run()
+func (ca *ConsoleApp) ActivateNewBinaryDataPage() {
+	form := newBinaryDataForm(ca)
+	disableCapture(ca)
+	ca.SetRoot(form, true).SetFocus(form).Run()
 }
 
 func (app *ConsoleApp) ClearConsole() {
 	app.console.SetText("")
 }
 
-func (app *ConsoleApp) AppendConsole(message string) {
-	app.console.SetText(fmt.Sprintf("%s\n%s", app.console.GetText(false), message))
+func (ca *ConsoleApp) AppendConsole(message string) {
+	ca.console.SetText(fmt.Sprintf("%s\n%s", ca.console.GetText(false), message))
 }
 
-func (app *ConsoleApp) handleCommand(cmdLine string) {
+func (ca *ConsoleApp) UpdateRecordList() {
+	ca.list.Clear()
+	for _, item := range items {
+		ca.list.AddItem(fmt.Sprintf("#%s. %s", item.ListNR, item.Name), item.Description, 0, nil)
+	}
+}
+
+func (ca *ConsoleApp) HandleCommand(cmdLine string) {
 	if len(cmdLine) == 0 {
 		return
 	}
-	ctx := context.WithValue(app.ctx, appCtx, app)
-	app.AppendConsole(fmt.Sprintf(">%s", cmdLine))
+	ctx := context.WithValue(ca.ctx, domain.CtxApp, ca)
+	ca.AppendConsole(fmt.Sprintf(">%s", cmdLine))
 	result, err := cp.Parse(ctx, cmdLine)
 	if err != nil {
-		app.AppendConsole(fmt.Sprintf("Error executing command: %s\n", err.Error()))
+		ca.AppendConsole(fmt.Sprintf("Error executing command: %s\n", err.Error()))
 		return
 	}
-	app.AppendConsole(result)
+	ca.AppendConsole(result)
 }
 
 // Switch between console and UI when ~ is pressed
-func (app *ConsoleApp) ToggleConsoleFocus() {
-	if app.inConsole {
-		app.flex.ResizeItem(app.flex.GetItem(0), 0, 4)
-		app.flex.ResizeItem(app.flex.GetItem(1), 0, 1)
-		app.Application.SetFocus(app.list)
+func (ca *ConsoleApp) ToggleConsoleFocus() {
+	if ca.inConsole {
+		ca.flex.ResizeItem(ca.flex.GetItem(0), 0, 4)
+		ca.flex.ResizeItem(ca.flex.GetItem(1), 0, 1)
+		ca.Application.SetFocus(ca.list)
 	} else {
-		app.flex.ResizeItem(app.flex.GetItem(0), 0, 1)
-		app.flex.ResizeItem(app.flex.GetItem(1), 0, 4)
-		app.Application.SetFocus(app.input)
+		ca.flex.ResizeItem(ca.flex.GetItem(0), 0, 1)
+		ca.flex.ResizeItem(ca.flex.GetItem(1), 0, 4)
+		ca.Application.SetFocus(ca.input)
 	}
-	app.inConsole = !app.inConsole
+	ca.inConsole = !ca.inConsole
 }
 
 // Switch between console and UI when ~ is pressed
-func (app *ConsoleApp) ResetFocus() {
-	app.inConsole = true
-	app.ToggleConsoleFocus()
+func (ca *ConsoleApp) ResetFocus() {
+	ca.inConsole = true
+	ca.ToggleConsoleFocus()
 }
 
 // // Keypress handler to switch between windows

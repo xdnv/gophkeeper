@@ -21,13 +21,14 @@ var Stor *storage.UniStorage
 func NewServerConfig() domain.ServerConfig {
 	return domain.ServerConfig{
 		ConfigFilePath:   "",
-		TransportMode:    domain.TRANSPORT_HTTP,
 		Endpoint:         domain.ENDPOINT,
+		MaxFileMemory:    1,
 		StoreInterval:    300,
 		DatabaseDSN:      "",
 		MessageSignature: "",
 		CryptoKeyPath:    "",
 		FileStoragePath:  "/tmp/metrics-db.json",
+		MockMode:         false,
 		RestoreMetrics:   true,
 		CompressReplies:  true,
 		TrustedSubnet:    "",
@@ -64,8 +65,8 @@ func ParseServerConfigFile(cf *domain.ServerConfig) {
 		panic(fmt.Sprintf("PANIC: error decoding JSON config: %s", err.Error()))
 	}
 
-	cf.TransportMode = jcf.TransportMode
 	cf.Endpoint = jcf.Endpoint
+	cf.MaxFileMemory = jcf.MaxFileMemory
 	cf.StoreInterval = jcf.StoreInterval
 	cf.DatabaseDSN = jcf.DatabaseDSN
 	cf.MessageSignature = jcf.MessageSignature
@@ -89,8 +90,8 @@ func InitServerConfig() domain.ServerConfig {
 	ParseServerConfigFile(&cf)
 
 	flag.StringVar(&cf.ConfigFilePath, "config", cf.ConfigFilePath, "path to configuration file in JSON format") //used to pass Parse() check
-	flag.StringVar(&cf.TransportMode, "transport", cf.TransportMode, "data exchange transport mode: http or grpc")
 	flag.StringVar(&cf.Endpoint, "a", cf.Endpoint, "the address:port endpoint for server to listen")
+	flag.Int64Var(&cf.MaxFileMemory, "m", 1, "max memory size in MB to process files uploaded")
 	flag.Int64Var(&cf.StoreInterval, "i", cf.StoreInterval, "interval in seconds to store metrics in datafile, set 0 for synchronous output")
 	flag.StringVar(&cf.DatabaseDSN, "d", cf.DatabaseDSN, "database DSN (format: 'host=<host> [port=port] user=<user> password=<xxxx> dbname=<mydb> sslmode=disable')")
 	flag.StringVar(&cf.MessageSignature, "k", cf.MessageSignature, "key to use signed messaging, empty value disables signing")
@@ -102,11 +103,14 @@ func InitServerConfig() domain.ServerConfig {
 	flag.StringVar(&cf.LogLevel, "l", cf.LogLevel, "log level")
 	flag.Parse()
 
-	if val, found := os.LookupEnv("TRANSPORT_MODE"); found {
-		cf.TransportMode = val
-	}
 	if val, found := os.LookupEnv("ADDRESS"); found {
 		cf.Endpoint = val
+	}
+	if val, found := os.LookupEnv("MAX_FILE_MEMORY"); found {
+		intval, err := strconv.ParseInt(val, 10, 64)
+		if err == nil {
+			cf.MaxFileMemory = intval
+		}
 	}
 	if val, found := os.LookupEnv("STORE_INTERVAL"); found {
 		intval, err := strconv.ParseInt(val, 10, 64)
@@ -146,24 +150,20 @@ func InitServerConfig() domain.ServerConfig {
 	}
 
 	// check for critical missing config entries
-	if cf.TransportMode != domain.TRANSPORT_HTTP && cf.TransportMode != domain.TRANSPORT_GRPC {
-		panic("PANIC: application transport mode set incorrectly")
-	}
 	if cf.Endpoint == "" {
 		panic("PANIC: endpoint address:port is not set")
+	}
+	if cf.MaxFileMemory == 0 {
+		panic("PANIC: Max file memory cannot be zero")
 	}
 	if cf.LogLevel == "" {
 		panic("PANIC: log level is not set")
 	}
 
-	//set main storage type for current session
-	if cf.DatabaseDSN != "" {
-		cf.StorageMode = domain.Database
-	} else if cf.FileStoragePath != "" {
-		cf.StorageMode = domain.File
-	} else {
-		cf.StorageMode = domain.Memory
-	}
+	cf.StorageMode = domain.Database
+
+	//manually set to true in autotests
+	cf.MockMode = false
 
 	// set encryption logic
 	cf.CryptoKeyPath = strings.TrimSpace(cf.CryptoKeyPath)
@@ -174,6 +174,13 @@ func InitServerConfig() domain.ServerConfig {
 		}
 		cryptor.EnableEncryption(true)
 	}
+
+	//generate RSA session crypto key
+	sessionCryptoKey, err := cryptor.GenerateRSAKey(4096)
+	if err != nil {
+		panic("PANIC: failed to generate crypto key " + err.Error())
+	}
+	cf.SessionCryptoKey = sessionCryptoKey
 
 	return cf
 }

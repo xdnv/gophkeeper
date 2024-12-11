@@ -3,14 +3,15 @@ package console
 import (
 	"context"
 	"fmt"
+	"internal/domain"
 	"strings"
 )
 
-// ExampleCommand - пример реализации команды
+// Command prototype
 type CommandNew struct{}
 
 func (ec *CommandNew) Execute(ctx context.Context, args []string) (string, error) {
-	app, ok := ctx.Value(appCtx).(*ConsoleApp)
+	ca, ok := ctx.Value(domain.CtxApp).(*ConsoleApp)
 	if !ok {
 		return "", fmt.Errorf("failed to get main application object")
 	}
@@ -32,13 +33,13 @@ func (ec *CommandNew) Execute(ctx context.Context, args []string) (string, error
 
 	switch datatype {
 	case TYPE_CREDENTIALS:
-		app.ActivateNewCredentialsPage()
+		ca.ActivateNewCredentialsPage()
 	case TYPE_CREDITCARD:
-		app.ActivateNewCreditCardPage()
+		ca.ActivateNewCreditCardPage()
 	case TYPE_TEXT:
-		app.ActivateNewTextDataPage()
+		ca.ActivateNewTextDataPage()
 	case TYPE_BINARY:
-		app.ActivateNewBinaryDataPage()
+		ca.ActivateNewBinaryDataPage()
 	default:
 		result := fmt.Sprintf("Error: unknown argument: %s", datatype)
 		return result, nil

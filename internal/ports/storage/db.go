@@ -1,52 +1,31 @@
-// the storage db package provides metric database layer
 package storage
 
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
-	"strconv"
-
+	"internal/adapters/logger"
 	"internal/domain"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	//_ "github.com/lib/pq"
 )
 
-// main metric storage
+// Main storage
 type DbStorage struct {
 	conn *sql.DB
 }
 
-// NewDbStorage returns new PostgreSQL Metric storage
+// Init DB storage object
 func NewDbStorage(conn *sql.DB) *DbStorage {
 	return &DbStorage{conn: conn}
 }
 
-// close DB connection
+// Closes db connection
 func (t DbStorage) Close() {
 	t.conn.Close()
 }
-
-// // Check if table exists
-// func (t DbStorage) TableExists(ctx context.Context, tx *sql.Tx, tableName string) (bool, error) {
-// 	row := tx.QueryRowContext(ctx, `
-// 		SELECT to_regclass('@tableName');
-// 		`,
-// 		sql.Named("tableName", tableName))
-
-// 	var (
-// 		result sql.NullString
-// 	)
-// 	err := row.Scan(&result)
-// 	if err != nil {
-// 		return false, err
-// 	}
-
-// 	return result.Valid, nil
-// }
 
 // prepare database
 func (t DbStorage) Bootstrap(ctx context.Context) error {
@@ -58,46 +37,35 @@ func (t DbStorage) Bootstrap(ctx context.Context) error {
 	}
 	defer tx.Rollback()
 
-	//we get db name in DSN spec
-	//dbName := "ya_metrics"
-
-	// a := `
-	// 	INSERT INTO the_table (id, column_1, column_2)
-	// 		VALUES (1, 'A', 'X'), (2, 'B', 'Y'), (3, 'C', 'Z')
-	// 	ON CONFLICT (id) DO UPDATE
-	// 		SET column_1 = excluded.column_1,
-	//   			column_2 = excluded.column_2;
-	//   `
-
-	//Check if db exists
-	// row := tx.QueryRowContext(ctx, `
-	// 	SELECT datname FROM pg_catalog.pg_database WHERE datname=@dbname
-	// `,
-	// 	sql.Named("dbname", dbName))
+	logger.Info("BOOTSTRAP STARTED")
 
 	//check config
 	//tableName := "public.config"
 	dbKey := "DBVersion"
-	dbVersion := "20240313"
-
-	// has, err := t.TableExists(ctx, tx, tableName)
-	// if err != nil {
-	// 	return err
-	// }
+	dbAppName := "GophKeeper"
+	dbVersion := "20241201"
 
 	//Important! pgx does not support sql.Named(), use pgx.NamedArgs{} instead
 
-	// if !has {
-	// config table stores app config entries
+	// enabling support of crypto operations
+	// usage example: pgp_sym_encrypt(data::text, 'secret_password') + select pgp_sym_decrypt(data, 'secret_password')
+	logger.Info("init pgcrypto extension")
+	_, err = tx.ExecContext(ctx, `
+		create extension if not exists pgcrypto;
+	`) //,
+	if err != nil {
+		return err
+	}
+
+	// config stores application-wide metadata
 	//TODO: add version update procedure
+	logger.Info("init config")
 	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS public.config (
 			key VARCHAR(128) NOT NULL PRIMARY KEY,
 			value TEXT
 		);
 	`) //,
-	//sql.Named("tableName", tableName),
-	//)
 	if err != nil {
 		return err
 	}
@@ -110,313 +78,356 @@ func (t DbStorage) Bootstrap(ctx context.Context) error {
 	`,
 		pgx.NamedArgs{
 			"dbKey":     dbKey,
+			"dbAppName": dbAppName,
 			"dbVersion": dbVersion,
 		},
 	)
 	if err != nil {
 		return err
 	}
-	// }
 
-	// gauge metrics
+	// users
+	logger.Info("init users")
 	_, err = tx.ExecContext(ctx, `
-        CREATE TABLE IF NOT EXISTS public.gauges (
-            id  VARCHAR(128) NOT NULL PRIMARY KEY,
-            value DOUBLE PRECISION NOT NULL 
+        CREATE TABLE IF NOT EXISTS public.users (
+			id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+            username VARCHAR(50) NOT NULL UNIQUE,
+			password VARCHAR(255) NOT NULL,
+			email VARCHAR(255) NOT NULL,
+			registration_date TIMESTAMP DEFAULT NOW(),
+			is_banned BOOL NOT NULL
         );
     `)
 	if err != nil {
 		return err
 	}
+	//TODO: add optional user details used to recover lost access etc. May be subject to GDPR.
+	//full_name VARCHAR(255),
+	//mobile_number VARCHAR(255),
 
-	// counter metrics
+	// completely secret public secrets
+	logger.Info("init secrets")
 	_, err = tx.ExecContext(ctx, `
-        CREATE TABLE IF NOT EXISTS public.counters (
-            id VARCHAR(128) NOT NULL PRIMARY KEY,
-            value BIGINT NOT NULL
-        );
-    `)
+	    CREATE TABLE IF NOT EXISTS public.secrets (
+			id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL,
+			name VARCHAR(50) NOT NULL,
+			description VARCHAR(1024) NOT NULL,
+			secret_type VARCHAR(50) NOT NULL,
+			created TIMESTAMP DEFAULT NOW(),
+			modified TIMESTAMP DEFAULT NOW(),
+			is_deleted BOOL NOT NULL,
+			secret BYTEA,
+			CONSTRAINT secret_fk_user FOREIGN KEY (user_id) REFERENCES public.users(id),
+			CONSTRAINT secret_uniq_user UNIQUE (id, user_id)
+	    );
+	`)
 	if err != nil {
 		return err
 	}
+
+	logger.Info("BOOTSTRAP OK")
 
 	// commit transaction
 	return tx.Commit()
 }
 
-// ping database
 func (t DbStorage) Ping(ctx context.Context) error {
 	return t.conn.PingContext(ctx)
 }
 
-// assign metric object to certain name. use with caution, TODO: replace with safer API
-func (t DbStorage) SetMetric(ctx context.Context, name string, metric Metric) error {
+func (t DbStorage) IsUserExists(ctx context.Context, uid string, isLogin bool) (bool, *domain.UserAccountRecord, error) {
 
-	mType := metric.GetType()
-	query := ""
+	var u domain.UserAccountRecord
 
-	switch mType {
-	case "gauge":
-		query = `
-		INSERT INTO public.gauges (id, value)
-			VALUES (@id::text, @value::double precision)
-		ON CONFLICT (id)
-			DO UPDATE SET value = excluded.value;
+	query := `
+		SELECT
+			t.id,
+			t.username,
+			t.password,
+			t.email,
+			t.registration_date,
+			t.is_banned
+		FROM public.users t
+		WHERE t.id = @uid;
 	`
-	case "counter":
-		query = `
-		INSERT INTO public.counters (id, value)
-			VALUES (@id::text, @value::bigint)
-		ON CONFLICT (id)
-			DO UPDATE SET value = excluded.value;
-	`
-	default:
-		return fmt.Errorf("unexpected metric type: %s", mType)
+	//alter query condition to support search by login
+	if isLogin {
+		query = strings.Replace(query, "WHERE t.id = @uid;", "WHERE t.username = @uid;", 1)
 	}
 
-	_, err := t.conn.ExecContext(ctx, query,
+	err := t.conn.QueryRowContext(ctx, query,
 		pgx.NamedArgs{
-			"id":    name,
-			"value": metric.GetValue(),
+			"uid": uid,
 		},
-	)
+	).Scan(&u.ID, &u.Login, &u.Password, &u.Email, &u.RegistrationDate, &u.IsBanned)
 
-	return err
+	switch {
+	case err == sql.ErrNoRows:
+		return false, nil, nil
+	case err != nil:
+		logger.Errorf("IsUserExists: %s", err)
+		return false, nil, err
+	default:
+		return true, &u, nil
+	}
 }
 
-// update metric using string-represented value
-func (t DbStorage) UpdateMetricS(ctx context.Context, mType string, mName string, mValue string) error {
+func (t DbStorage) GetUserRecord(ctx context.Context, uid string, isLogin bool) (*domain.UserAccountRecord, error) {
 
-	var val interface{}
-	var err error
-	query := ""
+	var u domain.UserAccountRecord
 
-	switch mType {
-	case "gauge":
-		val, err = strconv.ParseFloat(mValue, 64)
-		if err != nil {
-			return err
-		}
-		query = `
-		INSERT INTO public.gauges (id, value)
-			VALUES (@id::text, @value::double precision)
-		ON CONFLICT (id)
-			DO UPDATE SET value = excluded.value;
+	query := `
+		SELECT
+			t.id,
+			t.username,
+			t.password,
+			t.email,
+			t.registration_date,
+			t.is_banned
+		FROM public.users t
+		WHERE t.id = @uid;
 	`
-	case "counter":
-		val, err = strconv.ParseInt(mValue, 10, 64)
-		if err != nil {
-			return err
-		}
-		query = `
-		INSERT INTO public.counters (id, value)
-			VALUES (@id::text, @value::bigint)
-		ON CONFLICT (id)
-			DO UPDATE SET value = public.counters.value + excluded.value;
-	`
-	default:
-		return fmt.Errorf("unexpected metric type: %s", mType)
+	//alter query condition to support search by login
+	if isLogin {
+		query = strings.Replace(query, "WHERE t.id = @uid;", "WHERE t.username = @uid;", 1)
 	}
 
-	_, err = t.conn.ExecContext(ctx, query,
+	err := t.conn.QueryRowContext(ctx, query,
 		pgx.NamedArgs{
-			"id":    mName,
-			"value": val,
+			"uid": uid,
 		},
-	)
+	).Scan(&u.ID, &u.Login, &u.Password, &u.Email, &u.RegistrationDate, &u.IsBanned)
 
-	return err
-}
-
-// update single metric in transaction provided
-func (t DbStorage) UpdateMetricTransact(ctx context.Context, tx *sql.Tx, mType string, mName string, mValue interface{}) error {
-
-	var val interface{}
-	var err error
-	query := ""
-
-	switch mType {
-	case "gauge":
-		val = *mValue.(*float64)
-		query = `
-		INSERT INTO public.gauges (id, value)
-			VALUES (@id::text, @value::double precision)
-		ON CONFLICT (id)
-			DO UPDATE SET value = excluded.value;
-	`
-	case "counter":
-		val = *mValue.(*int64)
-		query = `
-		INSERT INTO public.counters (id, value)
-			VALUES (@id::text, @value::bigint)
-		ON CONFLICT (id)
-			DO UPDATE SET value = public.counters.value + excluded.value;
-	`
-	default:
-		return fmt.Errorf("unexpected metric type: %s", mType)
+	if err != nil {
+		logger.Errorf("GetUserRecord: %s", err)
+		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, query,
-		pgx.NamedArgs{
-			"id":    mName,
-			"value": val,
-		},
-	)
-
-	return err
+	return &u, nil
 }
 
-// mass metric update with transaction control
-func (t DbStorage) BatchUpdateMetrics(ctx context.Context, m *[]domain.Metrics, errs *[]error) (*[]domain.Metrics, error) {
+func (t DbStorage) UpdateUserRecord(ctx context.Context, ur *domain.UserAccountRecord) (string, error) {
+
+	var result string
 
 	// begin transaction
 	tx, err := t.conn.BeginTx(ctx, nil)
 	if err != nil {
-		*errs = append(*errs, err)
-		return m, err
+		return result, err
 	}
 	defer tx.Rollback()
 
-	for _, v := range *m {
-		mType := v.MType
+	query := `
+		INSERT INTO public.users (username, password, email, is_banned)
+			VALUES (@username, @password, @email, @is_banned)
+		ON CONFLICT (username) DO UPDATE
+			SET
+				password = EXCLUDED.password,
+				email = EXCLUDED.email,
+				is_banned = EXCLUDED.is_banned
+		RETURNING id;
+	`
 
-		switch mType {
-		case "gauge":
-			err := t.UpdateMetricTransact(ctx, tx, mType, v.ID, v.Value)
-			if err != nil {
-				*errs = append(*errs, err)
-			}
-		case "counter":
-			err := t.UpdateMetricTransact(ctx, tx, mType, v.ID, v.Delta)
-			if err != nil {
-				*errs = append(*errs, err)
-			}
-		default:
-			err := fmt.Errorf("ERROR: unsupported metric type %s", mType)
-			*errs = append(*errs, err)
-			continue
-		}
+	err = tx.QueryRowContext(ctx, query,
+		pgx.NamedArgs{
+			"username":  ur.Login,
+			"password":  ur.Password,
+			"email":     ur.Email,
+			"is_banned": ur.IsBanned,
+		},
+	).Scan(&result)
+	if err != nil {
+		return result, err
+	}
+
+	ur.ID = result
+
+	// commit transaction
+	err = tx.Commit()
+	return result, err
+}
+
+func (t DbStorage) AddSecret(ctx context.Context, r *domain.KeeperRecord) (string, error) {
+
+	var id string
+
+	// begin transaction
+	tx, err := t.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return id, err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO public.secrets (user_id, name, description, secret_type, is_deleted, secret)
+			VALUES (@user_id::uuid, @name, @description, @secret_type, @is_deleted, pgp_sym_encrypt(@secret::text, @user_id::text))
+		RETURNING id;
+	`
+	err = tx.QueryRowContext(ctx, query,
+		pgx.NamedArgs{
+			"user_id":     r.UserID,
+			"name":        r.Name,
+			"description": r.Description,
+			"secret_type": r.SecretType,
+			"is_deleted":  r.IsDeleted,
+			"secret":      r.Secret,
+		},
+	).Scan(&id)
+	if err != nil {
+		logger.Errorf("InsertSecret: %s", err)
+		return id, err
 	}
 
 	// commit transaction
 	err = tx.Commit()
-	return m, err
+
+	return id, err
 }
 
-// get metric object by its name
-func (t DbStorage) GetMetric(ctx context.Context, id string) (Metric, error) {
+func (t DbStorage) UpdateSecret(ctx context.Context, r *domain.KeeperRecord) (string, error) {
 
-	query := t.getMetricQuery(true)
+	var id string
 
-	row := t.conn.QueryRowContext(ctx, query,
+	// begin transaction
+	tx, err := t.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return id, err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO public.secrets (id, user_id, name, description, secret_type, is_deleted, secret)
+			VALUES (@id, @user_id, @name, @description, @secret_type, @is_deleted, pgp_sym_encrypt(@secret::text, @user_id))
+		ON CONFLICT (id) DO UPDATE
+			SET
+				name = EXCLUDED.name,
+				description = EXCLUDED.description,
+				secret_type = EXCLUDED.secret_type,
+				modified = NOW(),
+				is_deleted = EXCLUDED.is_deleted,
+				secret = EXCLUDED.secret
+		RETURNING id;
+	`
+	err = tx.QueryRowContext(ctx, query,
+		pgx.NamedArgs{
+			"id":          r.ID,
+			"user_id":     r.UserID,
+			"name":        r.Name,
+			"description": r.Description,
+			"secret_type": r.SecretType,
+			"is_deleted":  r.IsDeleted,
+			"secret":      r.Secret,
+		},
+	).Scan(&id)
+	if err != nil {
+		logger.Errorf("UpdateSecret: %s", err)
+		return id, err
+	}
+
+	// commit transaction
+	err = tx.Commit()
+
+	return id, err
+}
+
+func (t DbStorage) GetSecret(ctx context.Context, id string) (*domain.KeeperRecord, error) {
+
+	var r domain.KeeperRecord
+
+	query := `
+		SELECT
+			t.id,
+			t.user_id,
+			t.name,
+			t.description,
+			t.secret_type,
+			t.is_deleted,
+			pgp_sym_decrypt(secret, user_id) AS secret
+		FROM public.secrets t
+		WHERE t.id = @id;
+	`
+	err := t.conn.QueryRowContext(ctx, query,
+		pgx.NamedArgs{
+			"id": id,
+		},
+	).Scan(&r.ID, &r.UserID, &r.Name, &r.Description, &r.SecretType, &r.IsDeleted, &r.Secret)
+
+	if err != nil {
+		logger.Errorf("GetSecret: %s", err)
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+func (t DbStorage) GetSecrets(ctx context.Context, userId string) (*domain.KeeperRecords, error) {
+
+	var r domain.KeeperRecords
+
+	query := `
+		SELECT id, user_id, name, description, secret_type, is_deleted, pgp_sym_decrypt(secret, user_id::text)
+		FROM public.secrets
+		WHERE user_id = @user_id AND NOT is_deleted;
+	`
+
+	rows, err := t.conn.QueryContext(ctx, query,
+		pgx.NamedArgs{
+			"user_id": userId,
+		},
+	)
+	if err != nil {
+		logger.Errorf("GetSecrets: %s", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var counter = 1
+	for rows.Next() {
+		kr := new(domain.KeeperRecord)
+		if err := rows.Scan(&kr.ID, &kr.UserID, &kr.Name, &kr.Description, &kr.SecretType, &kr.IsDeleted, &kr.Secret); err != nil {
+			logger.Errorf("GetSecrets: %s", err)
+			return nil, err
+		}
+
+		kr.ListNR = fmt.Sprintf("%v", counter)
+		kr.ShortID = kr.ID[:8]
+
+		r = append(r, *kr)
+
+		counter++
+	}
+
+	//logger.Infof("GetSecrets: got rows %s", len(r)) //DEBUG
+
+	return &r, nil
+}
+
+func (t DbStorage) DeleteSecret(ctx context.Context, id string) error {
+
+	// begin transaction
+	tx, err := t.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `
+		UPDATE public.secrets
+		SET is_deleted = TRUE
+		WHERE id = @id;
+	`
+
+	_, err = tx.ExecContext(ctx, query,
 		pgx.NamedArgs{
 			"id": id,
 		},
 	)
-
-	var (
-		mType       string
-		mId         string
-		mFloatValue sql.NullFloat64
-		mIntValue   sql.NullInt64
-	)
-
-	err := row.Scan(&mType, &mId, &mFloatValue, &mIntValue)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("metric not found: %s", id)
-		}
-
-		fmt.Printf("Scan error %s", err)
-		return nil, err
+		return err
 	}
 
-	var metric Metric
-
-	switch mType {
-	case "gauge":
-		metric = &Gauge{Value: mFloatValue.Float64}
-	case "counter":
-		metric = &Counter{Value: mIntValue.Int64}
-	default:
-		return nil, fmt.Errorf("unexpected metric type: %s", mType)
-	}
-
-	return metric, nil
-}
-
-// get a copy of Metric storage
-func (t DbStorage) GetMetrics(ctx context.Context) (map[string]Metric, error) {
-
-	// Create the target map
-	targetMap := make(map[string]Metric)
-
-	query := t.getMetricQuery(false)
-
-	rows, err := t.conn.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("GetMetrics: unable to query metrics: %w", err)
-	}
-	defer rows.Close()
-
-	var (
-		mType       string
-		mId         string
-		mFloatValue sql.NullFloat64
-		mIntValue   sql.NullInt64
-	)
-
-	//users := []model.User{}
-
-	for rows.Next() {
-		var metric Metric
-
-		err := rows.Scan(&mType, &mId, &mFloatValue, &mIntValue)
-		if err != nil {
-			return nil, fmt.Errorf("unable to scan row: %w", err)
-		}
-
-		switch mType {
-		case "gauge":
-			metric = &Gauge{Value: mFloatValue.Float64}
-		case "counter":
-			metric = &Counter{Value: mIntValue.Int64}
-		default:
-			return nil, fmt.Errorf("unexpected metric type: %s", mType)
-		}
-
-		targetMap[mId] = metric
-	}
-
-	return targetMap, nil
-}
-
-// form query to extract all or specific metric from database
-func (t DbStorage) getMetricQuery(addFlter bool) string {
-	query := `
-		SELECT
-			'gauge' AS mtype,
-			id AS id,
-			value AS floatvalue,
-			NULL as intvalue
-		FROM
-			public.gauges%[1]s		
-		UNION ALL
-		SELECT
-			'counter' AS mtype,
-			id AS id,
-			NULL as floatvalue,
-			value AS intvalue
-		FROM
-			public.counters%[1]s;
-	`
-	replacement := ""
-
-	if addFlter {
-		replacement = `
-		WHERE
-			id = @id`
-	}
-
-	return fmt.Sprintf(query, replacement)
+	// commit transaction
+	err = tx.Commit()
+	return err
 }

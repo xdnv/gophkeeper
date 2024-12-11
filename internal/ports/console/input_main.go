@@ -2,24 +2,21 @@ package console
 
 import (
 	"fmt"
+	"internal/domain"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
-func newMainLayout(app *ConsoleApp) *tview.Flex {
-	app.list = tview.NewList()
-
-	for _, item := range items {
-		app.list.AddItem(fmt.Sprintf("#%s. %s", item.ID, item.Text), item.Comment, 0, nil)
-	}
-	app.list.
+func newMainLayout(ca *ConsoleApp) *tview.Flex {
+	ca.list = tview.NewList()
+	ca.list.
 		SetTitle("Records").
 		SetBorder(true)
 
-	app.content = tview.NewTextView()
-	app.content.
+	ca.content = tview.NewTextView()
+	ca.content.
 		SetText("select list record to view its contents.").
 		SetScrollable(true).
 		SetMaxLines(150).
@@ -27,20 +24,27 @@ func newMainLayout(app *ConsoleApp) *tview.Flex {
 		SetTitle("Data").
 		SetBorder(true)
 
-	app.list.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+	ca.list.SetChangedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		item := items[index]
-		app.content.SetText(fmt.Sprintf("#%s. %s\n%s\n%s", item.ID, item.Text, item.Comment, "(press ENTER to decrypt data)"))
-		//app.console.SetText("Selected ID: " + itemID)
+		ca.content.SetText(fmt.Sprintf("#%s. %s\n%s\n%s [%s]\n%s", item.ListNR, item.Name, item.Description, item.ShortID, item.ID, "(press ENTER to decrypt data)"))
 	})
 
-	app.list.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
-		itemID := items[index].ID
-		app.content.SetText("DECRYPTED ID: " + itemID)
-		//app.console.SetText("Selected ID: " + itemID)
+	ca.list.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		item := items[index]
+
+		decrypted := ""
+		secret, err := domain.KeepDeserialized(item.SecretType, []byte(item.Secret))
+		if err == nil {
+			decrypted = domain.KeepReadable(*secret)
+		} else {
+			decrypted = fmt.Sprintf("error decrypting data: %s", err)
+		}
+
+		ca.content.SetText(fmt.Sprintf("#%s. %s\n%s\n%s [%s]\n%s", item.ListNR, item.Name, item.Description, item.ShortID, item.ID, "DECRYPTED DATA:\n"+decrypted))
 	})
 
-	app.console = tview.NewTextView()
-	app.console.
+	ca.console = tview.NewTextView()
+	ca.console.
 		SetText("").
 		SetScrollable(true).
 		SetMaxLines(150).
@@ -48,26 +52,26 @@ func newMainLayout(app *ConsoleApp) *tview.Flex {
 		SetTitle("Console").
 		SetBorder(true)
 
-	app.input = tview.NewInputField().
+	ca.input = tview.NewInputField().
 		SetLabel("> ").
 		SetFieldWidth(0)
 
-	app.input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	ca.input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyEnter:
-			command := app.input.GetText()
+			command := ca.input.GetText()
 			if strings.TrimSpace(command) != "" {
-				app.input.SetText("")               // Очищаем поле ввода
-				app.handleCommand(command)          // Обрабатываем команду
-				app.console.ScrollToEnd()           // Прокручиваем консоль вниз после ввода команды
-				app.Application.SetFocus(app.input) // Возвращаем фокус на поле ввода
+				ca.input.SetText("")              // Clear input field
+				ca.HandleCommand(command)         // Process command
+				ca.console.ScrollToEnd()          // Scroll to bottom
+				ca.Application.SetFocus(ca.input) // Return focus
 			}
-			return nil // Не передаем событие дальше
+			return nil // Stop event processing
 		case tcell.KeyEscape:
-			app.input.SetText("") // Очищаем поле ввода при нажатии Esc
-			return nil            // Не передаем событие дальше
+			ca.input.SetText("") // Clear input when ESC is pressed
+			return nil           // Stop event processing
 		default:
-			return event // Передаем событие дальше для других обработчиков
+			return event // Give event to next chained event processor
 		}
 	})
 
@@ -76,9 +80,9 @@ func newMainLayout(app *ConsoleApp) *tview.Flex {
 	// 		return
 	// 	}
 	// 	handleCommand(app, text)
-	// 	app.input.SetText("")               // Очищаем ввод после обработки команды
-	// 	app.console.ScrollToEnd()           // Прокручиваем консоль вниз после ввода команды
-	// 	app.Application.SetFocus(app.input) // Возвращаем фокус на поле ввода
+	// 	app.input.SetText("")
+	// 	app.console.ScrollToEnd()
+	// 	app.Application.SetFocus(app.input)
 	// })
 
 	instruction := tview.NewTextView().SetText(
@@ -87,44 +91,47 @@ func newMainLayout(app *ConsoleApp) *tview.Flex {
 
 	listFlex := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
-		AddItem(app.list, 0, 1, true).
-		AddItem(app.content, 0, 3, false)
+		AddItem(ca.list, 0, 1, true).
+		AddItem(ca.content, 0, 3, false)
 
 	consoleFlex := tview.NewFlex().
-		AddItem(app.console, 0, 1, false)
+		AddItem(ca.console, 0, 1, false)
 
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(listFlex, 0, 4, false).
 		AddItem(consoleFlex, 0, 1, false).
-		AddItem(app.input, 1, 0, false).
+		AddItem(ca.input, 1, 0, false).
 		AddItem(instruction, 1, 0, false)
 
-	app.flex = flex
+	ca.flex = flex
 
-	app.Application.SetRoot(flex, true)
-	enableCapture(app)
+	// // Update list from server
+	// SyncRecordList(ca)
+
+	ca.Application.SetRoot(flex, true)
+	enableCapture(ca)
 
 	return flex
 }
 
-func enableCapture(app *ConsoleApp) {
-	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+func enableCapture(ca *ConsoleApp) {
+	ca.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyTab:
-			app.ToggleConsoleFocus()
+			ca.ToggleConsoleFocus()
 			return nil
 		case tcell.KeyPgUp: // Scroll up
-			r, _ := app.console.GetScrollOffset()
-			app.console.ScrollTo(r-10, 0) // 10 lines up
+			r, _ := ca.console.GetScrollOffset()
+			ca.console.ScrollTo(r-10, 0) // 10 lines up
 			return nil
 		case tcell.KeyPgDn: // Scroll down
-			r, _ := app.console.GetScrollOffset()
-			app.console.ScrollTo(r+10, 0) // 10 lines down
+			r, _ := ca.console.GetScrollOffset()
+			ca.console.ScrollTo(r+10, 0) // 10 lines down
 			return nil
 		case tcell.KeyRune:
 			if event.Rune() == '~' || event.Rune() == '`' {
-				app.ToggleConsoleFocus()
+				ca.ToggleConsoleFocus()
 				return nil
 			}
 			//app.console.SetText(fmt.Sprintf("Got rune: %c\n", event.Rune()))
@@ -135,6 +142,6 @@ func enableCapture(app *ConsoleApp) {
 	})
 }
 
-func disableCapture(app *ConsoleApp) {
-	app.SetInputCapture(nil)
+func disableCapture(ca *ConsoleApp) {
+	ca.SetInputCapture(nil)
 }

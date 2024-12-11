@@ -34,17 +34,21 @@ require (
 	internal/transport/http_server v1.0.0
 )
 
-replace internal/transport/http_server => ./internal/transport/http_server
-
 replace internal/ports/storage => ./internal/ports/storage
 
 replace internal/ports/console => ./internal/ports/console
 
+replace internal/transport/http_client => ./internal/transport/http_client
+
+replace internal/transport/http_server => ./internal/transport/http_server
+
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
 	github.com/aerogu/tvchooser v1.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/gdamore/tcell/v2 v2.7.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -60,4 +64,5 @@ require (
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/term v0.25.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
+	internal/transport/http_client v1.0.0 // indirect
 )

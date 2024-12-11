@@ -1,9 +1,9 @@
 // common configuration parts
 package domain
 
-// Transport mode values
-const TRANSPORT_HTTP = "http"
-const TRANSPORT_GRPC = "grpc"
+// Protocol scheme to use in application
+//WARNING: security risk, use https/SSL in production code
+const PROTOCOL_SCHEME = "http"
 
 // Endpoint default
 const ENDPOINT = "localhost:8080"
@@ -17,3 +17,11 @@ type HandlerStatus struct {
 	Err        error
 	HTTPStatus int
 }
+
+//global context key type not to mess with other packages
+type ctxKey string
+
+const (
+	CtxApp      ctxKey = "app"
+	CtxUsername ctxKey = "username"
+)

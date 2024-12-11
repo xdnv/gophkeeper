@@ -29,9 +29,9 @@ const TYPE_BINARY = "binary"
 //var datatypes = []string{TYPE_LOGIN, TYPE_CREDITCARD, TYPE_TEXT, TYPE_BINARY}
 
 // Constructor
-func NewCommandParser(app *ConsoleApp) *CommandParser {
+func NewCommandParser(ca *ConsoleApp) *CommandParser {
 	return &CommandParser{
-		app:      app,
+		app:      ca,
 		commands: make(map[string]Command),
 	}
 }
@@ -65,6 +65,14 @@ func (cp *CommandParser) Parse(ctx context.Context, input string) (string, error
 
 	//unknown command is not an error
 	return fmt.Sprintf("Unknown command: %s. Type '%s' for help.", command, CMD_HELP), nil
+}
+
+// Executes command directly
+func (cp *CommandParser) ExecuteCommand(ctx context.Context, command string, args []string) (string, error) {
+	if cmd, exists := cp.commands[command]; exists {
+		return cmd.Execute(ctx, args)
+	}
+	return "", fmt.Errorf("command not found: %s", command)
 }
 
 // Returns help entries from all registered commands as slice of strings

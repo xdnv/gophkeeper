@@ -1,45 +1,55 @@
 package console
 
 import (
+	"fmt"
+	"internal/domain"
+	"internal/transport/http_client"
+
 	"github.com/rivo/tview"
 )
 
-func newRegistrationForm(app *ConsoleApp) *tview.Form {
+func newRegistrationForm(ca *ConsoleApp) *tview.Form {
 	form := tview.NewForm()
 	form.
 		AddInputField("Username", "", 20, nil, nil).
 		AddPasswordField("Password", "", 20, '*', nil).
+		AddInputField("Email", "", 50, nil, nil).
 		AddButton("Register", func() {
 			username := form.GetFormItemByLabel("Username").(*tview.InputField).GetText()
 			password := form.GetFormItemByLabel("Password").(*tview.InputField).GetText()
+			email := form.GetFormItemByLabel("Email").(*tview.InputField).GetText()
 
-			if _, exists := registeredUsers[username]; exists {
+			uac := new(domain.UserAccountData)
+			uac.Login = username
+			uac.Password = password
+			uac.Email = email
+			err := http_client.Register(uac)
+
+			if err != nil {
 				modal := tview.NewModal().
-					SetText("Sorry, this username already exists.\nPlease choose another or use login screen.").
+					SetText(fmt.Sprintf("Failed to register:\n%s", err.Error())).
 					AddButtons([]string{"OK"}).
 					SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-						app.SetRoot(form, true) // Return to registration form
+						ca.SetRoot(form, true) // Return to registration form
 					})
-				if err := app.SetRoot(modal, false).SetFocus(modal).Run(); err != nil {
+				if err := ca.SetRoot(modal, false).SetFocus(modal).Run(); err != nil {
 					panic(err)
 				}
 			} else {
-				registeredUsers[username] = password // Store new user & password
 				modal := tview.NewModal().
 					SetText("Registration successful").
 					AddButtons([]string{"OK"}).
 					SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-						app.ActivateLoginPage(true)
-						//app.SetRoot(createLoginForm(app), true) // Return to auth form
+						ca.ActivateLoginPage(true)
 					})
-				if err := app.SetRoot(modal, false).SetFocus(modal).Run(); err != nil {
+				if err := ca.SetRoot(modal, false).SetFocus(modal).Run(); err != nil {
 					panic(err)
 				}
 			}
 		}).
 		AddButton("Return", func() {
-			app.ActivateLoginPage(false)
-			//app.SetRoot(createLoginForm(app), true) // Return to auth form
+			ca.ActivateLoginPage(false)
+			//ca.SetRoot(createLoginForm(ca), true) // Return to auth form
 		}).
 		SetTitle("Registration").
 		SetBorder(true)

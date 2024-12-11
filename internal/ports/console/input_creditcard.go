@@ -1,16 +1,21 @@
 package console
 
 import (
+	"encoding/json"
 	"fmt"
+	"internal/domain"
+	"internal/transport/http_client"
 	"regexp"
 
 	"github.com/rivo/tview"
 )
 
-func newCreditCardForm(app *ConsoleApp) *tview.Form {
+func newCreditCardForm(ca *ConsoleApp) *tview.Form {
 	form := tview.NewForm()
 
 	// entry fields
+	form.AddInputField("Name", "", 30, nil, nil)
+
 	form.AddInputField("Card Number", "", 20,
 		func(textToCheck string, lastChar rune) bool {
 			// check for digits and spaces
@@ -43,28 +48,62 @@ func newCreditCardForm(app *ConsoleApp) *tview.Form {
 
 	form.AddButton("Submit",
 		func() {
+			name := form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
 			cardNumber := form.GetFormItemByLabel("Card Number").(*tview.InputField).GetText()
 			expirationDate := form.GetFormItemByLabel("Expiration Date (MM/YY)").(*tview.InputField).GetText()
 			cvv := form.GetFormItemByLabel("CVV").(*tview.InputField).GetText()
 			description := form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
 
-			//if validateCard(cardNumber) && validateExpiration(expirationDate) && validateCVV(cvv) {
-			message := fmt.Sprintf("Card Number: %s\nExpiration Date: %s\nCVV: %s\nDescription: %s\n", cardNumber, expirationDate, cvv, description)
+			r := new(domain.KeeperRecord)
+			r.Name = name
+			r.Description = description
+			r.SecretType = "creditcard"
+			r.IsDeleted = false
+
+			errMsg := "New Creditcard error: %s"
+
+			k := new(domain.KeeperCreditcard)
+			k.CardNumber = cardNumber
+			k.ExpirationDate = expirationDate
+			k.SecurityCode = cvv
+
+			jsonDataCr, err := json.Marshal(k)
+			if err != nil {
+				ca.AppendConsole(fmt.Sprintf(errMsg, err))
+				return
+			}
+			r.Secret = string(jsonDataCr)
+
+			jsonData, err := json.Marshal(r)
+			if err != nil {
+				ca.AppendConsole(fmt.Sprintf(errMsg, err))
+				return
+			}
+
+			args := []string{r.SecretType}
+			resp, err := http_client.ExecuteCommand("new", args, &jsonData)
+			if err != nil {
+				ca.AppendConsole(fmt.Sprintf(errMsg, err))
+				return
+			}
+
+			message := resp.Status
+			//message := fmt.Sprintf("Name: %s\nCard Number: %s\nExpiration Date: %s\nCVV: %s\nDescription: %s\n", name, cardNumber, expirationDate, cvv, description)
 			modal := tview.NewModal().
 				SetText(message).
 				AddButtons([]string{"OK"}).
 				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-					app.AppendConsole(message)
-					app.ActivateMainPage()
+					ca.AppendConsole(message)
+					ca.ActivateMainPage()
 				})
-			if err := app.SetRoot(modal, false).SetFocus(modal).Run(); err != nil {
+			if err := ca.SetRoot(modal, false).SetFocus(modal).Run(); err != nil {
 				panic(err)
 			}
 		})
 
 	form.AddButton("Return", func() {
-		app.AppendConsole("Cancelled")
-		app.ActivateMainPage()
+		ca.AppendConsole("Cancelled")
+		ca.ActivateMainPage()
 	})
 
 	form.SetBorder(true).SetTitle("New credit card data")

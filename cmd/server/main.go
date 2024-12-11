@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
-	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
@@ -20,18 +19,6 @@ import (
 	"internal/adapters/cryptor"
 	"internal/adapters/logger"
 )
-
-var Commit = func() string {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, setting := range info.Settings {
-			if setting.Key == "vcs.revision" {
-				return setting.Value
-			}
-		}
-	}
-
-	return ""
-}()
 
 // version descriptor
 var version = domain.GetVersion()
@@ -62,11 +49,6 @@ func main() {
 	// run `server` in its own goroutine
 	wg.Add(1)
 	go server(ctx, &wg)
-
-	// if err := run(); err != nil {
-	// 	//logger.Error("Server error", zap.Error(err))
-	// 	log.Fatal(err)
-	// }
 
 	// listen for ^C
 	c := make(chan os.Signal, 1)
@@ -102,16 +84,6 @@ func server(ctx context.Context, wg *sync.WaitGroup) {
 	switch app.Sc.StorageMode {
 	case domain.Database:
 		//remove password from log output
-		// //old mode
-		// var safeDSN = strings.Split(sc.DatabaseDSN, " ")
-		// for i, v := range safeDSN {
-		// 	if strings.Contains(v, "password=") {
-		// 		safeDSN[i] = "password=***"
-		// 	}
-		// }
-		// logger.Infof("srv: DSN %s", strings.Join(safeDSN, " "))
-
-		//nu mode
 		re := regexp.MustCompile(`(password)=(?P<password>\S*)`)
 		s := re.ReplaceAllLiteralString(app.Sc.DatabaseDSN, "password=***")
 		logger.Infof("srv: DSN %s", s)
@@ -120,21 +92,8 @@ func server(ctx context.Context, wg *sync.WaitGroup) {
 		logger.Infof("srv: datafile %s", app.Sc.FileStoragePath)
 	}
 
-	//read server state on start
-	if app.Sc.StorageMode == domain.File && app.Sc.RestoreMetrics {
-		err := app.Stor.LoadState(app.Sc.FileStoragePath)
-		if err != nil {
-			logger.Errorf("srv: failed to load server state from [%s], error: %s", app.Sc.FileStoragePath, err.Error())
-		}
-	}
-
-	//regular dumper
-	wg.Add(1)
-	go stateDumper(ctx, app.Sc, wg)
-
-	var srv *http.Server
-
-	srv = http_server.ServeHTTP()
+	//init and run server
+	var srv *http.Server = http_server.ServeHTTP()
 
 	<-ctx.Done()
 	logger.Info("srv: shutdown requested")
@@ -146,44 +105,7 @@ func server(ctx context.Context, wg *sync.WaitGroup) {
 	// graceful server shutdown
 	srv.Shutdown(shutdownCtx) // ignore server error "Err shutting down server : context canceled"
 
-	//save server state on shutdown
-	if app.Sc.StorageMode == domain.File {
-		err := app.Stor.SaveState(app.Sc.FileStoragePath)
-		if err != nil {
-			logger.Errorf("srv: failed to save server state to [%s], error: %s", app.Sc.FileStoragePath, err)
-		}
-	}
-
 	logger.Info("srv: server stopped")
-}
-
-func stateDumper(ctx context.Context, sc domain.ServerConfig, wg *sync.WaitGroup) {
-	//execute to exit wait group
-	defer wg.Done()
-
-	//save dump is disabled or set to immediate mode
-	if (sc.StorageMode != domain.File) || (sc.StoreInterval == 0) {
-		return
-	}
-
-	ticker := time.NewTicker(time.Duration(sc.StoreInterval) * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case now := <-ticker.C:
-			logger.Infof("TRACE: dump state [%s]\n", now.Format("2006-01-02 15:04:05"))
-
-			err := app.Stor.SaveState(sc.FileStoragePath)
-			if err != nil {
-				logger.Errorf("srv-dumper: failed to save server state to [%s], error: %s", sc.FileStoragePath, err)
-			}
-		case <-ctx.Done():
-			logger.Info("srv-dumper: stop requested")
-			return
-		}
-	}
-
 }
 
 func naIfEmpty(s string) string {

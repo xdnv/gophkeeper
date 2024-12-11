@@ -12,29 +12,12 @@ import (
 	"internal/domain"
 )
 
-// client configuration
-type ClientConfig struct {
-	TransportMode        string `json:"transport_mode,omitempty"`    // data exchange transport mode: http or grpc
-	Endpoint             string `json:"address,omitempty"`           // the address:port server endpoint to send metric data
-	ReportInterval       int64  `json:"report_interval,omitempty"`   // metric reporting frequency in seconds
-	PollInterval         int64  `json:"poll_interval,omitempty"`     // metric poll interval in seconds
-	LogLevel             string `json:"log_level,omitempty"`         // log verbosity (log level)
-	APIVersion           string `json:""`                            // API version to send metric data. Recent is v2
-	UseCompression       bool   `json:""`                            // activate gzip compression
-	BulkUpdate           bool   `json:""`                            // activate bulk JSON metric update
-	MaxConnectionRetries uint64 `json:""`                            // Connection retries for retriable functions (does not include original request. 0 to disable)
-	UseRateLimit         bool   `json:""`                            // flag option to enable or disable rate limiter
-	RateLimit            int64  `json:"rate_limit,omitempty"`        // max simultaneous connections to server (rate limit)
-	MessageSignature     string `json:"message_signature,omitempty"` // key to use signed messaging, empty value disables signing
-	CryptoKeyPath        string `json:"crypto_key,omitempty"`        // path to public crypto key (to encrypt messages to server)
-	ConfigFilePath       string `json:""`                            //path to JSON config file
-}
+var Cc domain.ClientConfig
 
 // NewConfig initializes a Config with default values
-func NewClientConfig() ClientConfig {
-	return ClientConfig{
+func NewClientConfig() domain.ClientConfig {
+	return domain.ClientConfig{
 		ConfigFilePath:   "",
-		TransportMode:    domain.TRANSPORT_HTTP,
 		Endpoint:         domain.ENDPOINT,
 		PollInterval:     2,
 		ReportInterval:   10,
@@ -46,7 +29,7 @@ func NewClientConfig() ClientConfig {
 }
 
 // custom command line parser to read config file name before flag.Parse() -- iter22 requirement
-func ParseAgentConfigFile(cf *ClientConfig) {
+func ParseAgentConfigFile(cf *domain.ClientConfig) {
 	for i, arg := range os.Args {
 		if arg == "-config" {
 			if i+1 < len(os.Args) {
@@ -85,7 +68,7 @@ func ParseAgentConfigFile(cf *ClientConfig) {
 }
 
 // set agent configuration using command line arguments and/or environment variables
-func InitClientConfig() ClientConfig {
+func InitClientConfig() domain.ClientConfig {
 
 	cf := NewClientConfig()
 	cf.UseCompression = true    // activate gzip compression
