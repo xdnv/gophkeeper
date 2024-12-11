@@ -17,7 +17,7 @@ func (ec *CommandSync) Execute(ctx context.Context, args []string) (string, erro
 		return "", fmt.Errorf("failed to get main application object")
 	}
 
-	resp, err := http_client.ExecuteCommand("synchronize", args, nil)
+	resp, err := http_client.ExecuteCommand(domain.S_CMD_SYNC, args, nil)
 	if err != nil {
 		return "", err
 	}

@@ -208,13 +208,13 @@ func (t UniStorage) UpdateSecret(r *domain.KeeperRecord) error {
 	return nil
 }
 
-func (t UniStorage) DeleteSecret(id string) error {
+func (t UniStorage) DeleteSecret(id string, userId string) error {
 	dbctx, cancel := context.WithTimeout(t.ctx, t.timeout)
 	defer cancel()
 
 	errMsg := "UniStorage.DeleteSecret error"
 	backoff := func(ctx context.Context) error {
-		err := t.db.DeleteSecret(dbctx, id)
+		err := t.db.DeleteSecret(dbctx, id, userId)
 		return HandleRetriableDB(err, errMsg)
 	}
 	err := DoRetry(dbctx, t.config.MaxConnectionRetries, backoff)

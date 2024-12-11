@@ -56,7 +56,7 @@ func newCredentialsForm(ca *ConsoleApp) *tview.Form {
 			}
 
 			args := []string{r.SecretType}
-			resp, err := http_client.ExecuteCommand("new", args, &jsonData)
+			resp, err := http_client.ExecuteCommand(domain.S_CMD_NEW, args, &jsonData)
 			if err != nil {
 				ca.AppendConsole(fmt.Sprintf(errMsg, err))
 				return

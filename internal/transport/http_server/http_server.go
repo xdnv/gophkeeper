@@ -28,10 +28,6 @@ func ServeHTTP() *http.Server {
 	mux.Post("/ping", HandleJWTAuth(http.HandlerFunc(HandlePingDBServer)))
 	//mux.Post("/logout", handleLogout)
 
-	mux.Post("/value/", HandleRequestMetricV2)
-	mux.Post("/update/", HandleUpdateMetricV2)
-	mux.Post("/updates/", HandleUpdateMetrics)
-
 	// create a server
 	srv := &http.Server{Addr: app.Sc.Endpoint, Handler: mux}
 

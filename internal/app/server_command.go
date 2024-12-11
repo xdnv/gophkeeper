@@ -40,7 +40,7 @@ func ExecuteCommand(ctx context.Context, data io.Reader) (*[]byte, *domain.Handl
 	}
 
 	switch rc.Command {
-	case "synchronize":
+	case domain.S_CMD_SYNC:
 		response, err = Stor.GetSecrets(userID)
 		if err != nil {
 			hs.Message = fmt.Sprintf("command execution error [%s]: %s", rc.Command, err.Error())
@@ -49,7 +49,31 @@ func ExecuteCommand(ctx context.Context, data io.Reader) (*[]byte, *domain.Handl
 			return nil, &hs
 		}
 
-	case "new":
+	case domain.S_CMD_DELETE:
+		if len(rc.Arguments) < 1 {
+			hs.Message = fmt.Sprintf("command execution error [%s]: no record ID provided", rc.Command)
+			hs.Err = errors.New(hs.Message)
+			hs.HTTPStatus = http.StatusInternalServerError
+			return nil, &hs
+		}
+		recordID := rc.Arguments[0]
+		err = Stor.DeleteSecret(recordID, userID)
+		if err != nil {
+			hs.Message = fmt.Sprintf("command execution error [%s]: %s", rc.Command, err.Error())
+			hs.Err = err
+			hs.HTTPStatus = http.StatusInternalServerError
+			return nil, &hs
+		}
+		//sync after delete
+		response, err = Stor.GetSecrets(userID)
+		if err != nil {
+			hs.Message = fmt.Sprintf("command execution error [%s]: %s", rc.Command, err.Error())
+			hs.Err = err
+			hs.HTTPStatus = http.StatusInternalServerError
+			return nil, &hs
+		}
+
+	case domain.S_CMD_NEW:
 		if rc.Data == nil {
 			hs.Message = fmt.Sprintf("command execution error [%s]: empty Data filed", rc.Command)
 			hs.Err = errors.New(hs.Message)
@@ -74,6 +98,7 @@ func ExecuteCommand(ctx context.Context, data io.Reader) (*[]byte, *domain.Handl
 			hs.HTTPStatus = http.StatusInternalServerError
 			return nil, &hs
 		}
+		//no JSON response here
 
 	default:
 		hs.Message = fmt.Sprintf("unknown command: %s", rc.Command)

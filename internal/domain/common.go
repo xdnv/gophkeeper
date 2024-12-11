@@ -25,3 +25,8 @@ const (
 	CtxApp      ctxKey = "app"
 	CtxUsername ctxKey = "username"
 )
+
+//server commands
+const S_CMD_SYNC = "synchronize"
+const S_CMD_NEW = "new"
+const S_CMD_DELETE = "delete"

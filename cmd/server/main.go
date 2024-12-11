@@ -89,7 +89,6 @@ func server(ctx context.Context, wg *sync.WaitGroup) {
 		logger.Infof("srv: DSN %s", s)
 
 	case domain.File:
-		logger.Infof("srv: datafile %s", app.Sc.FileStoragePath)
 	}
 
 	//init and run server

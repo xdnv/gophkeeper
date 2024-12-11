@@ -403,7 +403,8 @@ func (t DbStorage) GetSecrets(ctx context.Context, userId string) (*domain.Keepe
 	return &r, nil
 }
 
-func (t DbStorage) DeleteSecret(ctx context.Context, id string) error {
+// Delete secret by ID for specified userID (security measure)
+func (t DbStorage) DeleteSecret(ctx context.Context, id string, userId string) error {
 
 	// begin transaction
 	tx, err := t.conn.BeginTx(ctx, nil)
@@ -415,12 +416,13 @@ func (t DbStorage) DeleteSecret(ctx context.Context, id string) error {
 	query := `
 		UPDATE public.secrets
 		SET is_deleted = TRUE
-		WHERE id = @id;
+		WHERE id = @id AND user_id = @user_id;
 	`
 
 	_, err = tx.ExecContext(ctx, query,
 		pgx.NamedArgs{
-			"id": id,
+			"id":      id,
+			"user_id": userId,
 		},
 	)
 	if err != nil {

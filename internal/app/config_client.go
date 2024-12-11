@@ -17,14 +17,10 @@ var Cc domain.ClientConfig
 // NewConfig initializes a Config with default values
 func NewClientConfig() domain.ClientConfig {
 	return domain.ClientConfig{
-		ConfigFilePath:   "",
-		Endpoint:         domain.ENDPOINT,
-		PollInterval:     2,
-		ReportInterval:   10,
-		RateLimit:        0,
-		MessageSignature: "",
-		CryptoKeyPath:    "",
-		LogLevel:         domain.LOGLEVEL,
+		ConfigFilePath: "",
+		Endpoint:       domain.ENDPOINT,
+		CryptoKeyPath:  "",
+		LogLevel:       domain.LOGLEVEL,
 	}
 }
 
@@ -57,12 +53,8 @@ func ParseAgentConfigFile(cf *domain.ClientConfig) {
 		panic(fmt.Sprintf("PANIC: error decoding JSON config: %s", err.Error()))
 	}
 
-	cf.TransportMode = jcf.TransportMode
 	cf.Endpoint = jcf.Endpoint
-	cf.PollInterval = jcf.PollInterval
-	cf.ReportInterval = jcf.ReportInterval
 	cf.RateLimit = jcf.RateLimit
-	cf.MessageSignature = jcf.MessageSignature
 	cf.CryptoKeyPath = jcf.CryptoKeyPath
 	cf.LogLevel = jcf.LogLevel
 }
@@ -81,8 +73,6 @@ func InitClientConfig() domain.ClientConfig {
 	//set defaults and read command line
 	flag.StringVar(&cf.ConfigFilePath, "config", cf.ConfigFilePath, "path to configuration file in JSON format") //used to pass Parse() check
 	flag.StringVar(&cf.Endpoint, "a", cf.Endpoint, "the address:port server endpoint to send metric data")
-	//flag.Int64Var(&cf.RateLimit, "l", cf.RateLimit, "max simultaneous connections to server, set 0 to disable rate limit")
-	//flag.StringVar(&cf.MessageSignature, "k", cf.MessageSignature, "key to use signed messaging, empty value disables signing")
 	flag.StringVar(&cf.CryptoKeyPath, "crypto-key", cf.CryptoKeyPath, "path to public crypto key")
 	flag.StringVar(&cf.LogLevel, "v", cf.LogLevel, "log verbosity (log level)")
 	flag.Parse()
@@ -91,27 +81,6 @@ func InitClientConfig() domain.ClientConfig {
 	if val, found := os.LookupEnv("ADDRESS"); found {
 		cf.Endpoint = val
 	}
-	// if val, found := os.LookupEnv("POLL_INTERVAL"); found {
-	// 	intval, err := strconv.ParseInt(val, 10, 64)
-	// 	if err == nil {
-	// 		cf.PollInterval = intval
-	// 	}
-	// }
-	// if val, found := os.LookupEnv("REPORT_INTERVAL"); found {
-	// 	intval, err := strconv.ParseInt(val, 10, 64)
-	// 	if err == nil {
-	// 		cf.ReportInterval = intval
-	// 	}
-	// }
-	// if val, found := os.LookupEnv("RATE_LIMIT"); found {
-	// 	intval, err := strconv.ParseInt(val, 10, 64)
-	// 	if err == nil {
-	// 		cf.RateLimit = intval
-	// 	}
-	// }
-	// if val, found := os.LookupEnv("KEY"); found {
-	// 	cf.MessageSignature = val
-	// }
 	if val, found := os.LookupEnv("CRYPTO_KEY"); found {
 		cf.CryptoKeyPath = val
 	}
@@ -124,12 +93,6 @@ func InitClientConfig() domain.ClientConfig {
 	if cf.Endpoint == "" {
 		panic("PANIC: endpoint address:port is not set")
 	}
-	// if cf.PollInterval == 0 {
-	// 	panic("PANIC: poll interval is not set")
-	// }
-	// if cf.ReportInterval == 0 {
-	// 	panic("PANIC: report interval is not set")
-	// }
 	if cf.LogLevel == "" {
 		panic("PANIC: log level is not set")
 	}

@@ -20,8 +20,3 @@ func GetClientIP(r *http.Request) string {
 	ip = r.RemoteAddr
 	return ip
 }
-
-func IsAuthenticated(r *http.Request) bool {
-	cookie, err := r.Cookie("session")
-	return err == nil && cookie.Value == "authenticated"
-}

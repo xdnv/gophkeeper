@@ -20,19 +20,15 @@ var Stor *storage.UniStorage
 // NewConfig initializes a Config with default values
 func NewServerConfig() domain.ServerConfig {
 	return domain.ServerConfig{
-		ConfigFilePath:   "",
-		Endpoint:         domain.ENDPOINT,
-		MaxFileMemory:    1,
-		StoreInterval:    300,
-		DatabaseDSN:      "",
-		MessageSignature: "",
-		CryptoKeyPath:    "",
-		FileStoragePath:  "/tmp/metrics-db.json",
-		MockMode:         false,
-		RestoreMetrics:   true,
-		CompressReplies:  true,
-		TrustedSubnet:    "",
-		LogLevel:         domain.LOGLEVEL,
+		ConfigFilePath:  "",
+		Endpoint:        domain.ENDPOINT,
+		MaxFileMemory:   1,
+		DatabaseDSN:     "",
+		CryptoKeyPath:   "",
+		MockMode:        false,
+		CompressReplies: true,
+		TrustedSubnet:   "",
+		LogLevel:        domain.LOGLEVEL,
 	}
 }
 
@@ -67,12 +63,8 @@ func ParseServerConfigFile(cf *domain.ServerConfig) {
 
 	cf.Endpoint = jcf.Endpoint
 	cf.MaxFileMemory = jcf.MaxFileMemory
-	cf.StoreInterval = jcf.StoreInterval
 	cf.DatabaseDSN = jcf.DatabaseDSN
-	cf.MessageSignature = jcf.MessageSignature
 	cf.CryptoKeyPath = jcf.CryptoKeyPath
-	cf.FileStoragePath = jcf.FileStoragePath
-	cf.RestoreMetrics = jcf.RestoreMetrics
 	cf.CompressReplies = jcf.CompressReplies
 	cf.TrustedSubnet = jcf.TrustedSubnet
 	cf.LogLevel = jcf.LogLevel
@@ -92,13 +84,9 @@ func InitServerConfig() domain.ServerConfig {
 	flag.StringVar(&cf.ConfigFilePath, "config", cf.ConfigFilePath, "path to configuration file in JSON format") //used to pass Parse() check
 	flag.StringVar(&cf.Endpoint, "a", cf.Endpoint, "the address:port endpoint for server to listen")
 	flag.Int64Var(&cf.MaxFileMemory, "m", 1, "max memory size in MB to process files uploaded")
-	flag.Int64Var(&cf.StoreInterval, "i", cf.StoreInterval, "interval in seconds to store metrics in datafile, set 0 for synchronous output")
 	flag.StringVar(&cf.DatabaseDSN, "d", cf.DatabaseDSN, "database DSN (format: 'host=<host> [port=port] user=<user> password=<xxxx> dbname=<mydb> sslmode=disable')")
-	flag.StringVar(&cf.MessageSignature, "k", cf.MessageSignature, "key to use signed messaging, empty value disables signing")
 	flag.StringVar(&cf.CryptoKeyPath, "crypto-key", cf.CryptoKeyPath, "path to private crypto key")
 	flag.StringVar(&cf.TrustedSubnet, "t", cf.TrustedSubnet, "trusted agent subnet in CIDR form. use empty value to disable security check.")
-	flag.StringVar(&cf.FileStoragePath, "f", cf.FileStoragePath, "full datafile path to store/load state of metrics. empty value shuts off metric dumps")
-	flag.BoolVar(&cf.RestoreMetrics, "r", cf.RestoreMetrics, "load metrics from datafile on server start, boolean")
 	flag.BoolVar(&cf.CompressReplies, "c", cf.CompressReplies, "compress server replies, boolean")
 	flag.StringVar(&cf.LogLevel, "l", cf.LogLevel, "log level")
 	flag.Parse()
@@ -112,32 +100,14 @@ func InitServerConfig() domain.ServerConfig {
 			cf.MaxFileMemory = intval
 		}
 	}
-	if val, found := os.LookupEnv("STORE_INTERVAL"); found {
-		intval, err := strconv.ParseInt(val, 10, 64)
-		if err == nil {
-			cf.StoreInterval = intval
-		}
-	}
-	if val, found := os.LookupEnv("FILE_STORAGE_PATH"); found {
-		cf.FileStoragePath = val
-	}
 	if val, found := os.LookupEnv("RESTORE"); found {
 		boolval, err := strconv.ParseBool(val)
 		if err == nil {
 			cf.CompressReplies = boolval
 		}
 	}
-	if val, found := os.LookupEnv("COMPRESS_REPLIES"); found {
-		boolval, err := strconv.ParseBool(val)
-		if err == nil {
-			cf.RestoreMetrics = boolval
-		}
-	}
 	if val, found := os.LookupEnv("DATABASE_DSN"); found {
 		cf.DatabaseDSN = val
-	}
-	if val, found := os.LookupEnv("KEY"); found {
-		cf.MessageSignature = val
 	}
 	if val, found := os.LookupEnv("CRYPTO_KEY"); found {
 		cf.CryptoKeyPath = val

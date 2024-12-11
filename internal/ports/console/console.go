@@ -51,6 +51,7 @@ func (ca *ConsoleApp) InitCommands() {
 	cp.RegisterCommand("list", &CommandList{})
 	cp.RegisterCommand("new", &CommandNew{})
 	cp.RegisterCommand("dump", &CommandDump{})
+	cp.RegisterCommand("delete", &CommandDelete{})
 	cp.RegisterCommand("ping", &CommandPing{})
 	cp.RegisterCommand("exit", &CommandExit{})
 }
