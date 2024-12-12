@@ -10,13 +10,27 @@ import (
 	"github.com/rivo/tview"
 )
 
-func newCreditCardForm(ca *ConsoleApp) *tview.Form {
+func newCreditCardForm(ca *ConsoleApp, r *domain.KeeperRecord) *tview.Form {
 	form := tview.NewForm()
 
-	// entry fields
-	form.AddInputField("Name", "", 30, nil, nil)
+	var k = domain.KeeperCreditcard{}
+	var title = "Credit card (new)"
 
-	form.AddInputField("Card Number", "", 20,
+	var newRecord bool = (r == nil)
+	if newRecord {
+		r = new(domain.KeeperRecord)
+		r.SecretType = domain.SECRET_CREDITCARD
+		r.IsDeleted = false
+	} else {
+		// if we can't read Secret, we use empty structure
+		_ = json.Unmarshal([]byte(r.Secret), &k)
+		title = "Credit card " + r.Reference()
+	}
+
+	// entry fields
+	form.AddInputField("Name", r.Name, 30, nil, nil)
+
+	form.AddInputField("Card Number", k.CardNumber, 20,
 		func(textToCheck string, lastChar rune) bool {
 			// check for digits and spaces
 			if matched, _ := regexp.MatchString(`^(?:[0-9]{0,4} ?){0,4}$`, textToCheck); !matched {
@@ -26,7 +40,7 @@ func newCreditCardForm(ca *ConsoleApp) *tview.Form {
 		},
 		nil)
 
-	form.AddInputField("Expiration Date (MM/YY)", "", 6,
+	form.AddInputField("Expiration Date (MM/YY)", k.ExpirationDate, 6,
 		func(textToCheck string, lastChar rune) bool {
 			if matched, _ := regexp.MatchString(`^(0[1-9]|1[0-2])?\/?[0-9]{0,2}$`, textToCheck); !matched {
 				return false
@@ -35,7 +49,7 @@ func newCreditCardForm(ca *ConsoleApp) *tview.Form {
 		},
 		nil)
 
-	form.AddInputField("CVV", "", 5,
+	form.AddInputField("CVV", k.SecurityCode, 5,
 		func(textToCheck string, lastChar rune) bool {
 			if matched, _ := regexp.MatchString(`^[0-9]{0,3}$`, textToCheck); !matched {
 				return false
@@ -44,28 +58,17 @@ func newCreditCardForm(ca *ConsoleApp) *tview.Form {
 		},
 		nil)
 
-	form.AddTextArea("Description", "", 0, 5, 0, nil)
+	form.AddTextArea("Description", r.Description, 0, 5, 0, nil)
 
 	form.AddButton("Submit",
 		func() {
-			name := form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
-			cardNumber := form.GetFormItemByLabel("Card Number").(*tview.InputField).GetText()
-			expirationDate := form.GetFormItemByLabel("Expiration Date (MM/YY)").(*tview.InputField).GetText()
-			cvv := form.GetFormItemByLabel("CVV").(*tview.InputField).GetText()
-			description := form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
+			r.Name = form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
+			k.CardNumber = form.GetFormItemByLabel("Card Number").(*tview.InputField).GetText()
+			k.ExpirationDate = form.GetFormItemByLabel("Expiration Date (MM/YY)").(*tview.InputField).GetText()
+			k.SecurityCode = form.GetFormItemByLabel("CVV").(*tview.InputField).GetText()
+			r.Description = form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
 
-			r := new(domain.KeeperRecord)
-			r.Name = name
-			r.Description = description
-			r.SecretType = "creditcard"
-			r.IsDeleted = false
-
-			errMsg := "New Creditcard error: %s"
-
-			k := new(domain.KeeperCreditcard)
-			k.CardNumber = cardNumber
-			k.ExpirationDate = expirationDate
-			k.SecurityCode = cvv
+			errMsg := "error: %s"
 
 			jsonDataCr, err := json.Marshal(k)
 			if err != nil {
@@ -81,7 +84,7 @@ func newCreditCardForm(ca *ConsoleApp) *tview.Form {
 			}
 
 			args := []string{r.SecretType}
-			resp, err := http_client.ExecuteCommand(domain.S_CMD_NEW, args, &jsonData)
+			resp, err := http_client.ExecuteCommand(domain.S_CMD_UPDATE, args, &jsonData)
 			if err != nil {
 				ca.AppendConsole(fmt.Sprintf(errMsg, err))
 				return
@@ -106,7 +109,7 @@ func newCreditCardForm(ca *ConsoleApp) *tview.Form {
 		ca.ActivateMainPage()
 	})
 
-	form.SetBorder(true).SetTitle("New credit card data")
+	form.SetBorder(true).SetTitle(title)
 	return form
 }
 

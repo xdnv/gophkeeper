@@ -9,32 +9,37 @@ import (
 	"github.com/rivo/tview"
 )
 
-func newTextDataForm(ca *ConsoleApp) *tview.Form {
+func newTextDataForm(ca *ConsoleApp, r *domain.KeeperRecord) *tview.Form {
 	form := tview.NewForm()
 
+	var k = domain.KeeperText{}
+	var title = "Text (new)"
+
+	var newRecord bool = (r == nil)
+	if newRecord {
+		r = new(domain.KeeperRecord)
+		r.SecretType = domain.SECRET_TEXT
+		r.IsDeleted = false
+	} else {
+		// if we can't read Secret, we use empty structure
+		_ = json.Unmarshal([]byte(r.Secret), &k)
+		title = "Text " + r.Reference()
+	}
+
 	// entry fields
-	form.AddInputField("Name", "", 30, nil, nil)
+	form.AddInputField("Name", r.Name, 30, nil, nil)
 
-	form.AddTextArea("Text", "", 0, 15, 0, nil)
+	form.AddTextArea("Text", k.Text, 0, 15, 0, nil)
 
-	form.AddTextArea("Description", "", 0, 5, 0, nil)
+	form.AddTextArea("Description", r.Description, 0, 5, 0, nil)
 
 	form.AddButton("Submit",
 		func() {
-			name := form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
-			text := form.GetFormItemByLabel("Text").(*tview.TextArea).GetText()
-			description := form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
+			r.Name = form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
+			k.Text = form.GetFormItemByLabel("Text").(*tview.TextArea).GetText()
+			r.Description = form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
 
-			r := new(domain.KeeperRecord)
-			r.Name = name
-			r.Description = description
-			r.SecretType = "text"
-			r.IsDeleted = false
-
-			errMsg := "New Text error: %s"
-
-			k := new(domain.KeeperText)
-			k.Text = text
+			errMsg := "error: %s"
 
 			jsonDataCr, err := json.Marshal(k)
 			if err != nil {
@@ -50,7 +55,7 @@ func newTextDataForm(ca *ConsoleApp) *tview.Form {
 			}
 
 			args := []string{r.SecretType}
-			resp, err := http_client.ExecuteCommand(domain.S_CMD_NEW, args, &jsonData)
+			resp, err := http_client.ExecuteCommand(domain.S_CMD_UPDATE, args, &jsonData)
 			if err != nil {
 				ca.AppendConsole(fmt.Sprintf(errMsg, err))
 				return
@@ -75,6 +80,6 @@ func newTextDataForm(ca *ConsoleApp) *tview.Form {
 		ca.ActivateMainPage()
 	})
 
-	form.SetBorder(true).SetTitle("New text data")
+	form.SetBorder(true).SetTitle(title)
 	return form
 }

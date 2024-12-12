@@ -28,5 +28,5 @@ const (
 
 //server commands
 const S_CMD_SYNC = "synchronize"
-const S_CMD_NEW = "new"
+const S_CMD_UPDATE = "update"
 const S_CMD_DELETE = "delete"

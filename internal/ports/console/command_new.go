@@ -33,13 +33,13 @@ func (ec *CommandNew) Execute(ctx context.Context, args []string) (string, error
 
 	switch datatype {
 	case TYPE_CREDENTIALS:
-		ca.ActivateNewCredentialsPage()
+		ca.ActivateNewCredentialsPage(nil)
 	case TYPE_CREDITCARD:
-		ca.ActivateNewCreditCardPage()
+		ca.ActivateNewCreditCardPage(nil)
 	case TYPE_TEXT:
-		ca.ActivateNewTextDataPage()
+		ca.ActivateNewTextDataPage(nil)
 	case TYPE_BINARY:
-		ca.ActivateNewBinaryDataPage()
+		ca.ActivateNewBinaryDataPage(nil)
 	default:
 		result := fmt.Sprintf("Error: unknown argument: %s", datatype)
 		return result, nil

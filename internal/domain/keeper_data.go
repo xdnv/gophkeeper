@@ -78,7 +78,7 @@ type KeeperCredentials struct {
 }
 
 // String representation for "credentials" datatype
-func (k *KeeperCredentials) ToString() string {
+func (k KeeperCredentials) ToString() string {
 	return fmt.Sprintf("Address: %s\nLogin: %s\nPassword: %s", k.Address, k.Login, k.Password)
 }
 
@@ -90,7 +90,7 @@ type KeeperCreditcard struct {
 }
 
 // String representation for "creditcard" datatype
-func (k *KeeperCreditcard) ToString() string {
+func (k KeeperCreditcard) ToString() string {
 	return fmt.Sprintf("Card Number: %s\nExpiration Date: %s\nCVV: %s", k.CardNumber, k.ExpirationDate, k.SecurityCode)
 }
 
@@ -100,7 +100,7 @@ type KeeperText struct {
 }
 
 // String representation for "text" datatype
-func (k *KeeperText) ToString() string {
+func (k KeeperText) ToString() string {
 	return fmt.Sprintf("Text:\n%s", k.Text)
 }
 
@@ -113,7 +113,7 @@ type KeeperBinary struct {
 }
 
 // String representation for "binary" datatype
-func (k *KeeperBinary) ToString() string {
+func (k KeeperBinary) ToString() string {
 	return fmt.Sprintf("File name:%s\nExtension:%s\nFile size: %v", k.FileName, k.Extension, k.FileSize)
 }
 

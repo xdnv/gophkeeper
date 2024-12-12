@@ -73,7 +73,7 @@ func ExecuteCommand(ctx context.Context, data io.Reader) (*[]byte, *domain.Handl
 			return nil, &hs
 		}
 
-	case domain.S_CMD_NEW:
+	case domain.S_CMD_UPDATE:
 		if rc.Data == nil {
 			hs.Message = fmt.Sprintf("command execution error [%s]: empty Data filed", rc.Command)
 			hs.Err = errors.New(hs.Message)
@@ -90,8 +90,13 @@ func ExecuteCommand(ctx context.Context, data io.Reader) (*[]byte, *domain.Handl
 			return nil, &hs
 		}
 		kr.UserID = userID
+		isNewRecord := (kr.ID == "")
 
-		err = Stor.AddSecret(&kr)
+		if isNewRecord {
+			err = Stor.AddSecret(&kr)
+		} else {
+			err = Stor.UpdateSecret(&kr)
+		}
 		if err != nil {
 			hs.Message = fmt.Sprintf("command execution error [%s]: %s", rc.Command, err.Error())
 			hs.Err = err

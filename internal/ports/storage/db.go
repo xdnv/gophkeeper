@@ -298,8 +298,8 @@ func (t DbStorage) UpdateSecret(ctx context.Context, r *domain.KeeperRecord) (st
 
 	query := `
 		INSERT INTO public.secrets (id, user_id, name, description, secret_type, is_deleted, secret)
-			VALUES (@id, @user_id, @name, @description, @secret_type, @is_deleted, pgp_sym_encrypt(@secret::text, @user_id))
-		ON CONFLICT (id) DO UPDATE
+			VALUES (@id, @user_id::uuid, @name, @description, @secret_type, @is_deleted, pgp_sym_encrypt(@secret::text, @user_id::text))
+		ON CONFLICT ON CONSTRAINT secret_uniq_user DO UPDATE
 			SET
 				name = EXCLUDED.name,
 				description = EXCLUDED.description,

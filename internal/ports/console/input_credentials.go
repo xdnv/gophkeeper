@@ -9,38 +9,41 @@ import (
 	"github.com/rivo/tview"
 )
 
-func newCredentialsForm(ca *ConsoleApp) *tview.Form {
+func newCredentialsForm(ca *ConsoleApp, r *domain.KeeperRecord) *tview.Form {
 	form := tview.NewForm()
 
+	var k = domain.KeeperCredentials{}
+	var title = "Credentials (new)"
+
+	var newRecord bool = (r == nil)
+	if newRecord {
+		r = new(domain.KeeperRecord)
+		r.SecretType = domain.SECRET_CREDENTIALS
+		r.IsDeleted = false
+	} else {
+		// if we can't read Secret, we use empty structure
+		_ = json.Unmarshal([]byte(r.Secret), &k)
+		title = "Credentials " + r.Reference()
+	}
+
 	// entry fields
-	form.AddInputField("Name", "", 30, nil, nil)
+	form.AddInputField("Name", r.Name, 30, nil, nil)
 
-	form.AddInputField("Address", "", 50, nil, nil).
-		AddInputField("Login", "", 50, nil, nil).
-		AddInputField("Password", "", 50, nil, nil)
+	form.AddInputField("Address", k.Address, 50, nil, nil).
+		AddInputField("Login", k.Login, 50, nil, nil).
+		AddInputField("Password", k.Password, 50, nil, nil)
 
-	form.AddTextArea("Description", "", 0, 5, 0, nil)
+	form.AddTextArea("Description", r.Description, 0, 5, 0, nil)
 
 	form.AddButton("Submit",
 		func() {
-			name := form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
-			address := form.GetFormItemByLabel("Address").(*tview.InputField).GetText()
-			login := form.GetFormItemByLabel("Login").(*tview.InputField).GetText()
-			password := form.GetFormItemByLabel("Password").(*tview.InputField).GetText()
-			description := form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
+			r.Name = form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
+			k.Address = form.GetFormItemByLabel("Address").(*tview.InputField).GetText()
+			k.Login = form.GetFormItemByLabel("Login").(*tview.InputField).GetText()
+			k.Password = form.GetFormItemByLabel("Password").(*tview.InputField).GetText()
+			r.Description = form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
 
-			r := new(domain.KeeperRecord)
-			r.Name = name
-			r.Description = description
-			r.SecretType = "credentials"
-			r.IsDeleted = false
-
-			errMsg := "New Credentials error: %s"
-
-			k := new(domain.KeeperCredentials)
-			k.Address = address
-			k.Login = login
-			k.Password = password
+			errMsg := "error: %s"
 
 			jsonDataCr, err := json.Marshal(k)
 			if err != nil {
@@ -56,7 +59,7 @@ func newCredentialsForm(ca *ConsoleApp) *tview.Form {
 			}
 
 			args := []string{r.SecretType}
-			resp, err := http_client.ExecuteCommand(domain.S_CMD_NEW, args, &jsonData)
+			resp, err := http_client.ExecuteCommand(domain.S_CMD_UPDATE, args, &jsonData)
 			if err != nil {
 				ca.AppendConsole(fmt.Sprintf(errMsg, err))
 				return
@@ -81,6 +84,6 @@ func newCredentialsForm(ca *ConsoleApp) *tview.Form {
 		ca.ActivateMainPage()
 	})
 
-	form.SetBorder(true).SetTitle("New credentials")
+	form.SetBorder(true).SetTitle(title)
 	return form
 }

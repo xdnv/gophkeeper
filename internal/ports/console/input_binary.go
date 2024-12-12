@@ -10,40 +10,57 @@ import (
 	"github.com/rivo/tview"
 )
 
-func newBinaryDataForm(ca *ConsoleApp) *tview.Form {
+func newBinaryDataForm(ca *ConsoleApp, r *domain.KeeperRecord) *tview.Form {
 	form := tview.NewForm()
 
-	// entry fields
-	form.AddInputField("Name", "", 30, nil, nil)
+	var k = new(domain.KeeperBinary)
+	var title = "Binary (new)"
 
-	form.AddTextArea("Path", "", 0, 4, 0, nil).
+	//whether we reload file
+	var dataChanged = true
+
+	var newRecord bool = (r == nil)
+	if newRecord {
+		r = new(domain.KeeperRecord)
+		r.SecretType = domain.SECRET_BINARY
+		r.IsDeleted = false
+	} else {
+		// if we can't read Secret, we use empty structure
+		_ = json.Unmarshal([]byte(r.Secret), &k)
+		title = "Binary " + r.Reference()
+		dataChanged = false
+	}
+
+	// entry fields
+	form.AddInputField("Name", r.Name, 30, nil, nil)
+
+	form.AddTextArea("Path", k.FileName, 0, 4, 0, nil).
 		AddButton("Select file", func() {
 			path := tvchooser.FileChooser(ca.Application, false)
 			if path != "" {
 				form.GetFormItemByLabel("Path").(*tview.TextArea).SetText(path, false)
+				dataChanged = true
 			}
 		})
 
-	form.AddTextArea("Description", "", 0, 5, 0, nil)
+	form.AddTextArea("Description", r.Description, 0, 5, 0, nil)
 
 	form.AddButton("Submit",
 		func() {
-			name := form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
+			r.Name = form.GetFormItemByLabel("Name").(*tview.InputField).GetText()
 			path := form.GetFormItemByLabel("Path").(*tview.TextArea).GetText()
-			description := form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
+			r.Description = form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
 
-			r := new(domain.KeeperRecord)
-			r.Name = name
-			r.Description = description
-			r.SecretType = "binary"
-			r.IsDeleted = false
+			errMsg := "error: %s"
 
-			errMsg := "New Binary error: %s"
-
-			k, err := domain.NewBinarySecret(path)
-			if err != nil {
-				ca.AppendConsole(fmt.Sprintf(errMsg, err))
-				return
+			//check for file change, reload if there's new selected
+			if dataChanged {
+				var err error
+				k, err = domain.NewBinarySecret(path)
+				if err != nil {
+					ca.AppendConsole(fmt.Sprintf(errMsg, err))
+					return
+				}
 			}
 
 			jsonDataCr, err := json.Marshal(k)
@@ -60,7 +77,7 @@ func newBinaryDataForm(ca *ConsoleApp) *tview.Form {
 			}
 
 			args := []string{r.SecretType}
-			resp, err := http_client.ExecuteCommand(domain.S_CMD_NEW, args, &jsonData)
+			resp, err := http_client.ExecuteCommand(domain.S_CMD_UPDATE, args, &jsonData)
 			if err != nil {
 				ca.AppendConsole(fmt.Sprintf(errMsg, err))
 				return
@@ -85,6 +102,6 @@ func newBinaryDataForm(ca *ConsoleApp) *tview.Form {
 		ca.ActivateMainPage()
 	})
 
-	form.SetBorder(true).SetTitle("New text data")
+	form.SetBorder(true).SetTitle(title)
 	return form
 }

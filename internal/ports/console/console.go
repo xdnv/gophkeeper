@@ -50,6 +50,7 @@ func (ca *ConsoleApp) InitCommands() {
 	cp.RegisterCommand("sync", &CommandSync{})
 	cp.RegisterCommand("list", &CommandList{})
 	cp.RegisterCommand("new", &CommandNew{})
+	cp.RegisterCommand("edit", &CommandEdit{})
 	cp.RegisterCommand("dump", &CommandDump{})
 	cp.RegisterCommand("delete", &CommandDelete{})
 	cp.RegisterCommand("ping", &CommandPing{})
@@ -127,26 +128,27 @@ func (ca *ConsoleApp) ActivateMainPage() {
 	ca.Run()
 }
 
-func (ca *ConsoleApp) ActivateNewCreditCardPage() {
-	form := newCreditCardForm(ca)
+func (ca *ConsoleApp) ActivateNewCreditCardPage(r *domain.KeeperRecord) {
+	form := newCreditCardForm(ca, r)
 	disableCapture(ca)
 	ca.SetRoot(form, true).SetFocus(form).Run()
 }
 
-func (ca *ConsoleApp) ActivateNewCredentialsPage() {
-	form := newCredentialsForm(ca)
+// creates form for a new or editable "credentials" object
+func (ca *ConsoleApp) ActivateNewCredentialsPage(r *domain.KeeperRecord) {
+	form := newCredentialsForm(ca, r)
 	disableCapture(ca)
 	ca.SetRoot(form, true).SetFocus(form).Run()
 }
 
-func (ca *ConsoleApp) ActivateNewTextDataPage() {
-	form := newTextDataForm(ca)
+func (ca *ConsoleApp) ActivateNewTextDataPage(r *domain.KeeperRecord) {
+	form := newTextDataForm(ca, r)
 	disableCapture(ca)
 	ca.SetRoot(form, true).SetFocus(form).Run()
 }
 
-func (ca *ConsoleApp) ActivateNewBinaryDataPage() {
-	form := newBinaryDataForm(ca)
+func (ca *ConsoleApp) ActivateNewBinaryDataPage(r *domain.KeeperRecord) {
+	form := newBinaryDataForm(ca, r)
 	disableCapture(ca)
 	ca.SetRoot(form, true).SetFocus(form).Run()
 }
