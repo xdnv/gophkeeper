@@ -13,7 +13,7 @@ type Command interface {
 }
 
 // registered Command storage
-type CommandParser struct {
+type CommandProcessor struct {
 	app      *ConsoleApp
 	commands map[string]Command
 }
@@ -29,15 +29,15 @@ const TYPE_BINARY = "binary"
 //var datatypes = []string{TYPE_LOGIN, TYPE_CREDITCARD, TYPE_TEXT, TYPE_BINARY}
 
 // Constructor
-func NewCommandParser(ca *ConsoleApp) *CommandParser {
-	return &CommandParser{
+func NewCommandParser(ca *ConsoleApp) *CommandProcessor {
+	return &CommandProcessor{
 		app:      ca,
 		commands: make(map[string]Command),
 	}
 }
 
 // Registers new command
-func (cp *CommandParser) RegisterCommand(name string, cmd Command) {
+func (cp *CommandProcessor) RegisterCommand(name string, cmd Command) {
 	// CMD_HELP is protected
 	if name == CMD_HELP {
 		return
@@ -46,7 +46,7 @@ func (cp *CommandParser) RegisterCommand(name string, cmd Command) {
 }
 
 // Parses command with arguments, returns string result. Has built-in "help" command.
-func (cp *CommandParser) Parse(ctx context.Context, input string) (string, error) {
+func (cp *CommandProcessor) Parse(ctx context.Context, input string) (string, error) {
 	tokens := tokenize(input)
 	if len(tokens) == 0 {
 		return "", nil
@@ -68,7 +68,7 @@ func (cp *CommandParser) Parse(ctx context.Context, input string) (string, error
 }
 
 // Executes command directly
-func (cp *CommandParser) ExecuteCommand(ctx context.Context, command string, args []string) (string, error) {
+func (cp *CommandProcessor) ExecuteCommand(ctx context.Context, command string, args []string) (string, error) {
 	if cmd, exists := cp.commands[command]; exists {
 		return cmd.Execute(ctx, args)
 	}
@@ -76,7 +76,7 @@ func (cp *CommandParser) ExecuteCommand(ctx context.Context, command string, arg
 }
 
 // Returns help entries from all registered commands as slice of strings
-func (cp *CommandParser) GetHelpEntries() []string {
+func (cp *CommandProcessor) GetHelpEntries() []string {
 	var entries []string
 	entries = append(entries, "- help: show available commands and their options")
 
@@ -87,7 +87,7 @@ func (cp *CommandParser) GetHelpEntries() []string {
 }
 
 // Prints to string help entries from all registered commands
-func (cp *CommandParser) PrintHelpEntries() (string, error) {
+func (cp *CommandProcessor) PrintHelpEntries() (string, error) {
 	entries := cp.GetHelpEntries()
 	result := "Available commands:\n" + strings.Join(entries, "\n")
 	return result, nil

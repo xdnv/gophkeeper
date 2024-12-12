@@ -13,7 +13,7 @@ import (
 
 var items []domain.KeeperRecord
 
-var cp *CommandParser
+var cp *CommandProcessor
 
 type ConsoleApp struct {
 	*tview.Application
