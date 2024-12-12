@@ -37,26 +37,26 @@ const SECRET_BINARY = "binary"
 type KeeperRecords []KeeperRecord
 
 // Secret structure template
-type KeeperSecretData interface {
+type SecretData interface {
 	ToString() string
 }
 
 // universal human-readble output for Keeper* classes
-func KeepReadable(s KeeperSecretData) string {
+func KeepReadable(s SecretData) string {
 	return s.ToString()
 }
 
 // universal secret deserialzer
-func KeepDeserialized(class string, data []byte) (*KeeperSecretData, error) {
-	var object KeeperSecretData
+func KeepDeserialized(class string, data []byte) (*SecretData, error) {
+	var object SecretData
 
 	switch class {
 	case SECRET_CREDENTIALS:
-		object = new(KeeperCredentials)
+		object = new(SecretCredentials)
 	case SECRET_CREDITCARD:
-		object = new(KeeperCreditcard)
+		object = new(SecretCreditcard)
 	case SECRET_TEXT:
-		object = new(KeeperText)
+		object = new(SecretText)
 	case SECRET_BINARY:
 		object = new(KeeperBinary)
 	default:
@@ -71,36 +71,36 @@ func KeepDeserialized(class string, data []byte) (*KeeperSecretData, error) {
 }
 
 // Secret structure for datatype "credentials"
-type KeeperCredentials struct {
+type SecretCredentials struct {
 	Address  string `db:"address" json:"address"`   // URL to apply credentials
 	Login    string `db:"login" json:"login"`       //
 	Password string `db:"password" json:"password"` // URL to apply credentials
 }
 
 // String representation for "credentials" datatype
-func (k KeeperCredentials) ToString() string {
+func (k SecretCredentials) ToString() string {
 	return fmt.Sprintf("Address: %s\nLogin: %s\nPassword: %s", k.Address, k.Login, k.Password)
 }
 
 // Secret structure for datatype "creditcard"
-type KeeperCreditcard struct {
+type SecretCreditcard struct {
 	CardNumber     string `db:"card_number" json:"card_number"`         // Card number in 4 blocks of digits
 	ExpirationDate string `db:"expiration_date" json:"expiration_date"` // Expiration date in "MM/YY" format
 	SecurityCode   string `db:"security_code" json:"security_code"`     // CVC/CVV code (3 digits)
 }
 
 // String representation for "creditcard" datatype
-func (k KeeperCreditcard) ToString() string {
+func (k SecretCreditcard) ToString() string {
 	return fmt.Sprintf("Card Number: %s\nExpiration Date: %s\nCVV: %s", k.CardNumber, k.ExpirationDate, k.SecurityCode)
 }
 
 // Secret structure for datatype "text"
-type KeeperText struct {
+type SecretText struct {
 	Text string `db:"text" json:"text"` // Secret text
 }
 
 // String representation for "text" datatype
-func (k KeeperText) ToString() string {
+func (k SecretText) ToString() string {
 	return fmt.Sprintf("Text:\n%s", k.Text)
 }
 

@@ -13,7 +13,7 @@ import (
 func newCreditCardForm(ca *ConsoleApp, r *domain.KeeperRecord) *tview.Form {
 	form := tview.NewForm()
 
-	var k = domain.KeeperCreditcard{}
+	var k = domain.SecretCreditcard{}
 	var title = "Credit card (new)"
 
 	var newRecord bool = (r == nil)

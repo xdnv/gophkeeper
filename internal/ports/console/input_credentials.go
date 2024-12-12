@@ -12,7 +12,7 @@ import (
 func newCredentialsForm(ca *ConsoleApp, r *domain.KeeperRecord) *tview.Form {
 	form := tview.NewForm()
 
-	var k = domain.KeeperCredentials{}
+	var k = domain.SecretCredentials{}
 	var title = "Credentials (new)"
 
 	var newRecord bool = (r == nil)

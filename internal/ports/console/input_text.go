@@ -12,7 +12,7 @@ import (
 func newTextDataForm(ca *ConsoleApp, r *domain.KeeperRecord) *tview.Form {
 	form := tview.NewForm()
 
-	var k = domain.KeeperText{}
+	var k = domain.SecretText{}
 	var title = "Text (new)"
 
 	var newRecord bool = (r == nil)
