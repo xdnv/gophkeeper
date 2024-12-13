@@ -20,29 +20,49 @@ replace internal/adapters/logger => ./internal/adapters/logger
 
 replace internal/adapters/retrier => ./internal/adapters/retrier
 
-require internal/app v1.0.0 // indirect
+require internal/app v1.0.0
 
 replace internal/app => ./internal/app
 
-require internal/domain v1.0.0 // indirect
+require internal/domain v1.0.0
 
 replace internal/domain => ./internal/domain
 
-require internal/transport/http_server v1.0.0
-
-replace internal/transport/http_server => ./internal/transport/http_server
+require (
+	internal/ports/console v1.0.0
+	internal/ports/storage v1.0.0
+	internal/transport/http_server v1.0.0
+)
 
 replace internal/ports/storage => ./internal/ports/storage
 
+replace internal/ports/console => ./internal/ports/console
+
+replace internal/transport/http_client => ./internal/transport/http_client
+
+replace internal/transport/http_server => ./internal/transport/http_server
+
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
+	github.com/aerogu/tvchooser v1.1.0 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/gdamore/tcell/v2 v2.7.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.7.1 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/rivo/tview v0.0.0-20241103174730-c76f7879f592 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	golang.org/x/crypto v0.28.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/term v0.25.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
-	internal/ports/storage v1.0.0 // indirect
+	internal/transport/http_client v1.0.0 // indirect
 )

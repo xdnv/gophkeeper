@@ -10,8 +10,18 @@ import (
 	"os"
 )
 
+// generates a new RSA private key of configurable length. public key can be extracted via &privateKey.PublicKey
+func GenerateRSAKey(bits int) (*rsa.PrivateKey, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		return nil, err
+	}
+
+	return privateKey, nil
+}
+
 // generates a new RSA key pair of configurable length and saves them to files
-func GenerateKeyPair(privateKeyFile, publicKeyFile string, bits int) error {
+func GenerateRSAKeyPair(privateKeyFile, publicKeyFile string, bits int) error {
 	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return err

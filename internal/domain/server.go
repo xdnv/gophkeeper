@@ -1,6 +1,12 @@
 package domain
 
-import "fmt"
+import (
+	"crypto/rsa"
+	"database/sql"
+	"fmt"
+
+	"github.com/DATA-DOG/go-sqlmock"
+)
 
 // defines main session storage type based on server config given
 type StorageType int
@@ -27,19 +33,20 @@ func (t StorageType) String() string {
 
 // server configuration
 type ServerConfig struct {
-	TransportMode            string      `json:"transport_mode,omitempty"`    // data exchange transport mode: http or grpc
-	Endpoint                 string      `json:"address,omitempty"`           // the address:port endpoint for server to listen
-	StoreInterval            int64       `json:"store_interval,omitempty"`    // interval in seconds to store metrics in datafile, set 0 for synchronous output
-	StorageMode              StorageType `json:""`                            // session storage type
-	MaxConnectionRetries     uint64      `json:""`                            // max connection retries to storage objects
-	FileStoragePath          string      `json:"file_storage_path,omitempty"` // full datafile path to store/load state of metrics. empty value shuts off metric dumps
-	RestoreMetrics           bool        `json:"restore_metrics,omitempty"`   // load metrics from datafile on server start, boolean
-	DatabaseDSN              string      `json:"database_dsn,omitempty"`      // database DSN (format: 'host=<host> [port=port] user=<user> password=<xxxx> dbname=<mydb> sslmode=disable')
-	LogLevel                 string      `json:"log_level,omitempty"`         // log level
-	CompressReplies          bool        `json:"compress_replies,omitempty"`  // compress server replies, boolean
-	CompressibleContentTypes []string    `json:""`                            // array of compressible mime types
-	MessageSignature         string      `json:"message_signature,omitempty"` // key to use signed messaging, empty value disables signing
-	CryptoKeyPath            string      `json:"crypto_key,omitempty"`        // path to private crypto key (to decrypt messages from client)
-	TrustedSubnet            string      `json:"trusted_subnet,omitempty"`    // trusted agent subnet in CIDR form. use empty value to disable security check.
-	ConfigFilePath           string      `json:""`                            //path to JSON config file
+	TransportMode            string           `json:"transport_mode,omitempty"`   // data exchange transport mode: http or grpc
+	Endpoint                 string           `json:"address,omitempty"`          // the address:port endpoint for server to listen
+	MaxFileMemory            int64            `json:"max_file_memory,omitempty"`  // max memory size in MB to process files uploaded
+	StorageMode              StorageType      `json:""`                           // session storage type
+	MaxConnectionRetries     uint64           `json:""`                           // max connection retries to storage objects
+	MockMode                 bool             `json:""`                           // pgSQL mock mode for test purposes
+	Mock                     *sqlmock.Sqlmock `json:""`                           // pgSQL mock instance for test purposes
+	MockConn                 *sql.DB          `json:""`                           // pgSQL mock connection for test purposes
+	DatabaseDSN              string           `json:"database_dsn,omitempty"`     // database DSN (format: 'host=<host> [port=port] user=<user> password=<xxxx> dbname=<mydb> sslmode=disable')
+	LogLevel                 string           `json:"log_level,omitempty"`        // log level
+	CompressReplies          bool             `json:"compress_replies,omitempty"` // compress server replies, boolean
+	CompressibleContentTypes []string         `json:""`                           // array of compressible mime types
+	SessionCryptoKey         *rsa.PrivateKey  `json:""`                           // RSA 4096 session key used for encryption
+	CryptoKeyPath            string           `json:"crypto_key,omitempty"`       // path to private crypto key (to decrypt messages from client)
+	TrustedSubnet            string           `json:"trusted_subnet,omitempty"`   // trusted agent subnet in CIDR form. use empty value to disable security check.
+	ConfigFilePath           string           `json:""`                           //path to JSON config file
 }
