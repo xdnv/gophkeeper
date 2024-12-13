@@ -12,7 +12,7 @@ import (
 
 var (
 	blockedLogins = make(domain.BlockedLogins)
-	mu            sync.Mutex
+	mu            sync.RWMutex
 )
 
 // Hash password provided by user
