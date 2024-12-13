@@ -68,8 +68,8 @@ func (t UniStorage) Ping() error {
 	return err
 }
 
-// Checks if user exists without throwing an error. Returns bool status and password hash if succeded.
-func (t UniStorage) IsUserExists(uuid string, isLogin bool) (bool, *domain.UserAccountRecord, error) {
+// Checks if user exists without throwing an error. Returns bool status and account record ptr if succeded.
+func (t UniStorage) IsUserExists(uid string, isLogin bool) (bool, *domain.UserAccountRecord, error) {
 
 	dbctx, cancel := context.WithTimeout(t.ctx, t.timeout)
 	defer cancel()
@@ -79,7 +79,7 @@ func (t UniStorage) IsUserExists(uuid string, isLogin bool) (bool, *domain.UserA
 	errMsg := "UniStorage.IsUserExists error"
 	backoff := func(ctx context.Context) error {
 		var err error
-		ue, ur, err = t.db.IsUserExists(dbctx, uuid, isLogin)
+		ue, ur, err = t.db.IsUserExists(dbctx, uid, isLogin)
 		return HandleRetriableDB(err, errMsg)
 	}
 	err := DoRetry(dbctx, t.config.MaxConnectionRetries, backoff)
@@ -91,7 +91,7 @@ func (t UniStorage) IsUserExists(uuid string, isLogin bool) (bool, *domain.UserA
 }
 
 // Retrieves existing User record
-func (t UniStorage) GetUserRecord(uuid string, isLogin bool) (*domain.UserAccountRecord, error) {
+func (t UniStorage) GetUserRecord(uid string, isLogin bool) (*domain.UserAccountRecord, error) {
 
 	dbctx, cancel := context.WithTimeout(t.ctx, t.timeout)
 	defer cancel()
@@ -100,7 +100,7 @@ func (t UniStorage) GetUserRecord(uuid string, isLogin bool) (*domain.UserAccoun
 	errMsg := "UniStorage.GetUserRecord error"
 	backoff := func(ctx context.Context) error {
 		var err error
-		ur, err = t.db.GetUserRecord(dbctx, uuid, isLogin)
+		ur, err = t.db.GetUserRecord(dbctx, uid, isLogin)
 		return HandleRetriableDB(err, errMsg)
 	}
 	err := DoRetry(dbctx, t.config.MaxConnectionRetries, backoff)

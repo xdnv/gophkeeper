@@ -35,11 +35,13 @@ type AuthResponse struct {
 	PublicKey rsa.PublicKey `json:"public_key"`
 }
 
+// JWT custom Claims to be used in auth token
 type Claims struct {
 	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
 
+// auth bruteforce protector record type
 type BlockedLogin struct {
 	Login          string
 	IP             string
@@ -47,4 +49,5 @@ type BlockedLogin struct {
 	LastAttemptAt  time.Time
 }
 
+// auth bruteforce protector storage type
 type BlockedLogins map[string]BlockedLogin

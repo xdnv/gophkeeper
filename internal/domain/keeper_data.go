@@ -73,8 +73,8 @@ func KeepDeserialized(class string, data []byte) (*SecretData, error) {
 // Secret structure for datatype "credentials"
 type SecretCredentials struct {
 	Address  string `db:"address" json:"address"`   // URL to apply credentials
-	Login    string `db:"login" json:"login"`       //
-	Password string `db:"password" json:"password"` // URL to apply credentials
+	Login    string `db:"login" json:"login"`       // login credential
+	Password string `db:"password" json:"password"` // password credential
 }
 
 // String representation for "credentials" datatype
@@ -84,9 +84,9 @@ func (k SecretCredentials) ToString() string {
 
 // Secret structure for datatype "creditcard"
 type SecretCreditcard struct {
-	CardNumber     string `db:"card_number" json:"card_number"`         // Card number in 4 blocks of digits
+	CardNumber     string `db:"card_number" json:"card_number"`         // Card number in 4x4 space-delimited blocks of digits
 	ExpirationDate string `db:"expiration_date" json:"expiration_date"` // Expiration date in "MM/YY" format
-	SecurityCode   string `db:"security_code" json:"security_code"`     // CVC/CVV code (3 digits)
+	SecurityCode   string `db:"security_code" json:"security_code"`     // Security (CVC/CVV/CVC2/etc.) code, 3 digits
 }
 
 // String representation for "creditcard" datatype
@@ -142,11 +142,4 @@ func DumpBinary(k *KeeperBinary, filePath string) error {
 		return fmt.Errorf("empty binary data storage, nothing to save")
 	}
 	return os.WriteFile(filePath, k.Data, 0666)
-}
-
-// Remote command to be executed on server
-type RemoteCommand struct {
-	Command   string   `db:"command" json:"command"`     // Command name
-	Arguments []string `db:"arguments" json:"arguments"` // Optional command arguments
-	Data      []byte   `db:"data" json:"data"`           // Optional data structure serialized to byte array
 }
