@@ -38,7 +38,7 @@ func LoginUser(data io.Reader, metadata *domain.UserLoginMetadata) (*[]byte, *do
 
 	if IsUSerBlocked(u.Login, ip) {
 		hs.Message = "login rate limit excceded, please try later"
-		hs.Err = fmt.Errorf(hs.Message)
+		hs.Err = fmt.Errorf("%s", hs.Message)
 		hs.HTTPStatus = http.StatusTooManyRequests
 		return nil, hs
 	}
@@ -55,14 +55,14 @@ func LoginUser(data io.Reader, metadata *domain.UserLoginMetadata) (*[]byte, *do
 		RegisterFailedAuth(u.Login, ip)
 
 		hs.Message = "wrong username or password"
-		hs.Err = fmt.Errorf(hs.Message)
+		hs.Err = fmt.Errorf("%s", hs.Message)
 		hs.HTTPStatus = http.StatusUnauthorized
 		return nil, hs
 	}
 
 	if ur.IsBanned {
 		hs.Message = "this account is suspended"
-		hs.Err = fmt.Errorf(hs.Message)
+		hs.Err = fmt.Errorf("%s", hs.Message)
 		hs.HTTPStatus = http.StatusUnauthorized
 		return nil, hs
 	}

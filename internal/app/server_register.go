@@ -44,7 +44,7 @@ func RegisterNewUser(data io.Reader) (*[]byte, *domain.HandlerStatus) {
 
 	if exists {
 		hs.Message = "User already exists"
-		hs.Err = fmt.Errorf(hs.Message)
+		hs.Err = fmt.Errorf("%s", hs.Message)
 		hs.HTTPStatus = http.StatusConflict
 		return nil, hs
 	}
